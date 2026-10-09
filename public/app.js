@@ -343,7 +343,7 @@ function docCard(c,d,mode){
   return `<article class="doccard ${s}">
     <div class="top-l"><span class="code">${d.code}</span><div class="t"><b>${esc(d.name)}</b><div class="en">${esc(d.en)}</div>${req?`<div class="req">${req}</div>`:''}</div><button class="open" data-doc="${d.code}" title="Chi tiết tài liệu" aria-label="Chi tiết ${d.code}">${I('info')}</button></div>
     ${x.note?`<div class="note">${esc(x.note)}</div>`:''}
-    ${fs.length?`<div class="files">${fs.map(f=>`<button class="fchip" data-view="${f._id}">${I('file',14)}<span>${esc(f.name)}</span><em>${fmtSize(f.size)}</em></button>`).join('')}</div>`:''}
+    ${fs.length?`<div class="files">${fs.map(f=>`<div class="frow"><button class="fchip" data-view="${f._id}">${I('file',14)}<span>${esc(f.name)}</span><em>${fmtSize(f.size)}</em></button>${R.canWrite?`<button class="icon-btn fdel" data-del="${f._id}" title="Xoá tệp" aria-label="Xoá ${esc(f.name)}">${I('trash')}</button>`:''}</div>`).join('')}</div>`:''}
     ${mode==='missing'?`<div class="drop ${busy?'busy':''} ${canUp?'':'locked'}" ${canUp?`data-drop="${d.code}" tabindex="0" role="button"`:''} aria-label="Tải tệp cho ${d.code}">${busy?`${I('clock')}Đang tải lên…`:canUp?`${I('up')}Kéo tệp vào đây hoặc <b>bấm để chọn</b> · PDF, JPG, PNG · tối đa 50 MB`:`${I('alert')}Cần quyền chỉnh sửa để tải lên`}</div>`:''}
     ${mode==='review'&&R.canWrite?`<div class="foot"><button class="btn sm ok" data-setst="approved" data-code="${d.code}">${I('check',14)}Duyệt</button><button class="btn sm" data-ask="${d.code}">${I('undo',14)}Yêu cầu bổ sung</button>${canUp?`<button class="btn sm ghost" data-pick="${d.code}">${I('plus',14)}Thêm tệp</button>`:''}</div>`:''}
     ${mode==='approved'&&R.canWrite?`<div class="foot"><span class="dnote">Duyệt ${fmtTime(x.at)}</span><button class="btn sm ghost" data-setst="review" data-code="${d.code}" style="margin-left:auto">${I('undo',14)}Bỏ duyệt</button></div>`:''}
@@ -478,7 +478,7 @@ document.addEventListener('click',async e=>{
   if(ds.doc){openDrawer('doc',ds.doc);return}
   if(ds.view){openDrawer('file',ds.view);return}
   if(ds.dlf&&c){const f=(R.files[c.id]||[]).find(x=>x._id===ds.dlf);if(f)downloadFile(c,f);return}
-  if(ds.del&&c){if(armed!==ds.del){armed=ds.del;t.classList.add('btn','danger','armed');t.innerHTML='Xoá?';t.title='Bấm lần nữa để xoá';setTimeout(()=>{if(armed===ds.del){armed=null;refreshDrawer()}},3500);return}armed=null;const f=(R.files[c.id]||[]).find(x=>x._id===ds.del);if(f)deleteFile(c,f);return}
+  if(ds.del&&c){if(armed!==ds.del){armed=ds.del;t.classList.add('btn','danger','armed');t.innerHTML='Xoá?';t.title='Bấm lần nữa để xoá';setTimeout(()=>{if(armed===ds.del){armed=null;render();refreshDrawer()}},4000);return}armed=null;const f=(R.files[c.id]||[]).find(x=>x._id===ds.del);if(f)deleteFile(c,f);return}
   if(ds.setst&&c){await setStatus(c,ds.code,ds.setst);refreshDrawer();return}
   if(ds.ask&&c){openDrawer('doc',ds.ask);setTimeout(()=>{const n=$('dr-note');if(n){n.focus();n.placeholder='Ghi rõ cần khách bổ sung gì, rồi bấm “Lưu ghi chú” và chọn Còn thiếu.'}},250);return}
   if(ds.savenote&&c){await saveNote(c,ds.savenote,$('dr-note').value.trim());return}
