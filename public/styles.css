@@ -237,3 +237,12 @@ tbody tr.click{cursor:pointer} tbody tr.click:hover td{background:var(--panel)}
 }
 @media (max-width:640px){.info,.form{grid-template-columns:1fr}.docgrid{padding:4px 12px 14px}.phead .actions{margin-left:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Song ngữ VI / EN */
+.lang-sw{display:inline-flex;padding:2px;border:1px solid var(--border);border-radius:9px;background:var(--panel);flex:none}
+.lang-sw button{font:600 12px/1 var(--f-ui);letter-spacing:.04em;color:var(--muted);background:transparent;border:0;border-radius:7px;padding:7px 10px;cursor:pointer;min-width:38px}
+.lang-sw button:hover{color:var(--fg)}
+.lang-sw button[aria-pressed="true"]{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(14,26,18,.08),0 0 0 1px var(--border)}
+.lang-sw button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+html[lang="en"] .en{display:none}
+@media (max-width:900px){.top .crumbs{order:0;flex:1;min-width:0}.lang-sw{order:1}.top .search{order:2}}
