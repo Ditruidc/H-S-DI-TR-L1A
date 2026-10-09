@@ -4,7 +4,7 @@ Cổng quản lý hồ sơ khách hàng của IDC VIETNAM: theo dõi tài liệu
 
 - **Giao diện:** trang tĩnh trong `public/` (HTML + JS thuần, không cần build).
 - **Dữ liệu, đăng nhập, kho tệp:** Supabase (`supabase/schema.sql`).
-- **Chạy web:** Vercel, tên miền `hoso.duhocidc.com`.
+- **Chạy web:** Vercel, tên miền `hoso.ditruidc.com`.
 
 ---
 
@@ -29,10 +29,10 @@ SUPABASE_ANON_KEY: 'eyJ...',
 
 ### 3. Đưa lên Vercel
 1. https://vercel.com → đăng nhập bằng GitHub → **Add New → Project** → chọn repo này → **Deploy** (không cần chỉnh gì, `vercel.json` đã cấu hình).
-2. **Settings → Domains** → thêm `hoso.duhocidc.com`. Vercel sẽ báo một bản ghi DNS, thường là:
+2. **Settings → Domains** → thêm `hoso.ditruidc.com`. Vercel sẽ báo một bản ghi DNS, thường là:
    - Loại **CNAME**, tên **hoso**, giá trị **cname.vercel-dns.com**
-3. Vào nơi quản lý DNS của `duhocidc.com`, thêm đúng bản ghi đó. Website chính không bị ảnh hưởng.
-4. Supabase → **Authentication → URL Configuration** → Site URL: `https://hoso.duhocidc.com`.
+3. Vào nơi quản lý DNS của `ditruidc.com` (PA Vietnam), thêm đúng bản ghi đó. Website chính không bị ảnh hưởng.
+4. Supabase → **Authentication → URL Configuration** → Site URL: `https://hoso.ditruidc.com`.
 
 ---
 
