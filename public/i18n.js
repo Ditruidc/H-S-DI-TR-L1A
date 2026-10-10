@@ -17,6 +17,9 @@
     'Quản trị viên': 'Administrator', 'Nhân viên · được chỉnh sửa': 'Staff · can edit', 'Chỉ xem': 'View only', 'Nhân viên': 'Staff',
     'Đang tải dữ liệu…': 'Loading data…', 'Không đọc được dữ liệu': 'Could not load data', 'Chưa cấu hình Supabase (public/config.js).': 'Supabase is not configured (public/config.js).',
     'Bản xem thử · dữ liệu giả lập, thao tác không được lưu': 'Demo · sample data, changes are not saved',
+    // Đã nhận
+    'Đã nhận': 'Received', 'Tài liệu đã nhận': 'Documents received', 'Ngày nhận': 'Received on', 'Chưa nhận tài liệu nào': 'No documents received yet',
+    'Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.': 'Documents the client submits will appear here with the date received.',
     // Danh sách hồ sơ
     'Chương trình · L-1A → EB-1C': 'Program · L-1A → EB-1C',
     'Chọn một hồ sơ để xem những tài liệu còn thiếu, tải tệp lên, duyệt và tải hồ sơ về.': 'Open a case to see missing documents, upload files, review and download the case.',
@@ -100,7 +103,7 @@
   };
   const P = [
     [/^· (.+)$/, (m, a) => '· ' + tr(a)],
-    [/^(\d+) thiếu$/, '$1 missing'], [/^(\d+) chờ duyệt$/, '$1 pending'], [/^(\d+) tài liệu$/, '$1 documents'],
+    [/^(\d+) thiếu$/, '$1 missing'], [/^(\d+) đã nhận$/, '$1 received'], [/^(\d+) tài liệu đang chờ duyệt$/, '$1 pending review'], [/^(\d+) chờ duyệt$/, '$1 pending'], [/^(\d+) tài liệu$/, '$1 documents'],
     [/^(\d+)\/(\d+) đã duyệt$/, '$1/$2 approved'], [/^(\d+)\/(\d+) tài liệu bắt buộc$/, '$1/$2 required documents'],
     [/^(\d+) hồ sơ đang thu thập chứng từ$/, '$1 cases collecting documents'],
     [/^Bước (\d+)$/, 'Step $1'], [/^Bước$/, 'Step'], [/^Chuyển hồ sơ sang bước (\d+)$/, 'Move case to step $1'], [/^Chuyển sang bước (\d+)$/, 'Move to step $1'],

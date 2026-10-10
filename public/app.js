@@ -64,7 +64,11 @@ const S={view:'clients',client:null,tab:'missing',q:'',filter:'all'};
 const R={sb:null,session:null,email:null,role:null,canWrite:false,isAdmin:false,ready:false,err:null,clients:[],files:{},filesFor:null,urls:{},staff:[]};
 const getC=id=>R.clients.find(c=>c.id===id);
 const stOf=(c,code)=>(c.docs&&c.docs[code]&&c.docs[code].s)||'missing';
-function stats(c){const o={approved:0,review:0,missing:0,na:0};DOCS.forEach(d=>o[stOf(c,d.code)]++);o.req=DOCS.length-o.na;o.pct=o.req?Math.round(o.approved/o.req*100):0;return o}
+function stats(c){const o={approved:0,review:0,missing:0,na:0};DOCS.forEach(d=>o[stOf(c,d.code)]++);o.req=DOCS.length-o.na;o.rcv=o.review+o.approved;o.pct=o.req?Math.round(o.approved/o.req*100):0;return o}
+const fmtDate=iso=>{if(!iso)return'';const d=new Date(iso);if(isNaN(d))return'';const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`};
+const isRcv=(c,code)=>{const s=stOf(c,code);return s==='review'||s==='approved'};
+/* ngày nhận = ngày tệp đầu tiên được tải lên; nếu chưa có tệp thì lấy ngày đổi trạng thái */
+function rcvDate(c,code){const fs=(R.files[c.id]||[]).filter(f=>f.code===code).map(f=>f.at).filter(Boolean).sort();return fs[0]||(isRcv(c,code)?((c.docs||{})[code]||{}).at:'')||''}
 const paidOf=c=>PAY.reduce((a,p)=>a+(+((c.pay||{})[p.k])||0),0);
 const filesOf=(c,code)=>(R.files[c.id]||[]).filter(f=>f.code===code);
 const initials=n=>String(n||'?').split(' ').filter(Boolean).slice(-2).map(w=>w[0]).join('').toUpperCase();
@@ -212,11 +216,11 @@ const csvCell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
 function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
-  const kh=[['Mã HS','Đương đơn','Công ty VN','Tên công ty (EN)','Mã số DN','Ngành','Văn phòng','Phương án','Bước','Chuyên viên','Ngày mở','Người phụ thuộc','Pháp nhân tại Mỹ','Bang','Vốn điều lệ','Đăng ký DN','Chủ sở hữu / thành viên','Trụ sở','Ghi chú','Đã thu (USD)','Đã duyệt','Chờ duyệt','Còn thiếu','Cập nhật']];
+  const kh=[['Mã HS','Đương đơn','Công ty VN','Tên công ty (EN)','Mã số DN','Ngành','Văn phòng','Phương án','Bước','Chuyên viên','Ngày mở','Người phụ thuộc','Pháp nhân tại Mỹ','Bang','Vốn điều lệ','Đăng ký DN','Chủ sở hữu / thành viên','Trụ sở','Ghi chú','Đã thu (USD)','Đã nhận','Đã duyệt','Chờ duyệt','Còn thiếu','Cập nhật']];
   const ck=[['Mã HS','Mã TL','Tài liệu','Nhóm','Trạng thái','Ghi chú','Số tệp','Cập nhật']];
   const tt=[['Mã HS','Đợt','Thời điểm','Số tiền (USD)','Đã thu (USD)']];
   R.clients.forEach(c=>{const s=stats(c);
-    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,c.office,c.opt,c.step,c.staff,c.opened,c.deps,c.us,c.state,c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
+    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,c.office,c.opt,c.step,c.staff,c.opened,c.deps,c.us,c.state,c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.rcv,s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
     DOCS.forEach(d=>{const x=(c.docs||{})[d.code]||{};ck.push([c.id,d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],x.note||'',(R.files[c.id]||[]).filter(f=>f.code===d.code).length||'',fmtTime(x.at)])});
     PAY.forEach(p=>tt.push([c.id,p.n,p.w,p.a,+((c.pay||{})[p.k])||0]));
   });
@@ -228,12 +232,14 @@ async function exportExcel(){
 function emailText(c){
   const miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   const byG=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);return l.length?`${GROUPS[g].full}:\n`+l.map(d=>`  • ${d.code} – ${d.name}${d.period?' ('+d.period+')':''}${((c.docs||{})[d.code]||{}).note?' – '+c.docs[d.code].note:''}`).join('\n'):''}).filter(Boolean).join('\n\n');
+  const got=DOCS.filter(d=>isRcv(c,d.code));
+  const gotTxt=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);return l.length?`${GROUPS[g].full}:\n`+l.map(d=>{const dt=fmtDate(rcvDate(c,d.code));return `  ✓ ${d.code} – ${d.name}${dt?' (nhận '+dt+')':''}`}).join('\n'):''}).filter(Boolean).join('\n\n');
   const first=String(c.name||'').split(' ').slice(-1)[0];
   return `Kính gửi Anh/Chị ${first},
 
 IDC VIETNAM cập nhật tình trạng hồ sơ ${c.id} (L-1A → EB-1C). Hồ sơ đang ở bước ${c.step||1}/5: ${STEPS[(c.step||1)-1].t}.
 
-${miss.length?`Để luật sư kịp thẩm định, Anh/Chị vui lòng bổ sung ${miss.length} tài liệu sau:\n\n${byG}`:'Toàn bộ tài liệu bắt buộc đã đủ. Cảm ơn Anh/Chị đã phối hợp.'}
+${got.length?`IDC VIETNAM đã nhận ${got.length} tài liệu:\n\n${gotTxt}\n\n`:''}${miss.length?`Để luật sư kịp thẩm định, Anh/Chị vui lòng bổ sung ${miss.length} tài liệu sau:\n\n${byG}`:'Toàn bộ tài liệu bắt buộc đã đủ. Cảm ơn Anh/Chị đã phối hợp.'}
 
 Lưu ý khi gửi:
   • Tất cả tài liệu cần bản dịch tiếng Anh kèm bản gốc.
@@ -305,7 +311,7 @@ function vClients(){
   const q=S.q.trim().toLowerCase();
   const all=R.clients;
   const list=all.filter(c=>{const s=stats(c);if(S.filter==='missing'&&!s.missing)return false;if(S.filter==='review'&&!s.review)return false;if(S.filter==='done'&&(s.missing||s.review))return false;return !q||[c.id,c.name,c.company,c.staff,c.office].join(' ').toLowerCase().includes(q)});
-  let miss=0,rev=0,appr=0,req=0;all.forEach(c=>{const s=stats(c);miss+=s.missing;rev+=s.review;appr+=s.approved;req+=s.req});
+  let miss=0,rev=0,appr=0,req=0,rcv=0;all.forEach(c=>{const s=stats(c);miss+=s.missing;rev+=s.review;appr+=s.approved;req+=s.req;rcv+=s.rcv});
   const cnt=k=>all.filter(c=>{const s=stats(c);return k==='missing'?s.missing:k==='review'?s.review:k==='done'?!s.missing&&!s.review:true}).length;
   $('view').innerHTML=`
   <div class="phead"><div><div class="eyebrow">Chương trình · L-1A → EB-1C</div><h1>Hồ sơ khách hàng</h1><p>Chọn một hồ sơ để xem những tài liệu còn thiếu, tải tệp lên, duyệt và tải hồ sơ về.</p></div>
@@ -313,22 +319,23 @@ function vClients(){
   ${all.length?`<section class="kpis">
     <div class="kpi"><div class="eyebrow">Hồ sơ</div><div class="v num">${all.length}</div><div class="s">${all.filter(c=>(c.step||1)===1).length} hồ sơ đang thu thập chứng từ</div></div>
     <div class="kpi"><div class="eyebrow">Tài liệu còn thiếu</div><div class="v num" style="color:var(--bad)">${miss}</div><div class="s">Cần khách bổ sung</div></div>
-    <div class="kpi"><div class="eyebrow">Chờ duyệt</div><div class="v num" style="color:var(--warn)">${rev}</div><div class="s">Đã có tệp, chờ kiểm tra</div></div>
+    <div class="kpi"><div class="eyebrow">Tài liệu đã nhận</div><div class="v num" style="color:var(--ok)">${rcv}</div><div class="s">${rev} tài liệu đang chờ duyệt</div></div>
     <div class="kpi"><div class="eyebrow">Đã duyệt</div><div class="v num" style="color:var(--ok)">${req?Math.round(appr/req*100):0}%</div><div class="s">${appr}/${req} tài liệu bắt buộc</div></div>
   </section>
   <section class="card">
     <div class="card-h"><div class="chips">${[['all','Tất cả'],['missing','Còn thiếu tài liệu'],['review','Có tài liệu chờ duyệt'],['done','Đã đủ']].map(([k,l])=>`<button class="chip" data-filter="${k}" aria-pressed="${S.filter===k}">${l}<span class="n">${cnt(k)}</span></button>`).join('')}</div></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Tiến trình</th><th>Tài liệu</th><th class="r">Còn thiếu</th><th class="r">Chờ duyệt</th><th>Chuyên viên</th><th>Cập nhật</th></tr></thead>
+      <thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Tiến trình</th><th>Tài liệu</th><th class="r">Đã nhận</th><th class="r">Còn thiếu</th><th class="r">Chờ duyệt</th><th>Chuyên viên</th><th>Cập nhật</th></tr></thead>
       <tbody>${list.length?list.map(c=>{const s=stats(c),w=x=>(s.req?x/s.req*100:0).toFixed(1)+'%';return `<tr class="click" data-open="${esc(c.id)}">
         <td><div class="who"><div class="av">${esc(initials(c.name))}</div><div style="min-width:0"><button class="row-link" data-open="${esc(c.id)}">${esc(c.name||'—')}</button><div class="dnote">${esc(c.company||'')}</div></div></div></td>
         <td class="mono">${esc(c.id)}</td>
         <td><div class="stepdots">${[1,2,3,4,5].map(i=>`<i class="${i<=(c.step||1)?'on':''}"></i>`).join('')}</div><div class="dnote" style="margin-top:4px">Bước ${c.step||1} · ${STEPS[(c.step||1)-1].t}</div></td>
         <td><div class="bar"><i class="a" style="width:${w(s.approved)}"></i><i class="r" style="width:${w(s.review)}"></i><i class="m" style="width:${w(s.missing)}"></i></div><div class="dnote num" style="margin-top:4px">${s.approved}/${s.req} đã duyệt</div></td>
+        <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
         <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
         <td class="r num">${s.review||'—'}</td>
         <td>${esc(c.staff||'—')}<div class="dnote">${esc(c.office||'')}</div></td>
-        <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="8" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
+        <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
     </table></div>
   </section>`:vEmpty()}`;
 }
@@ -357,9 +364,10 @@ function vCase(){
   const c=getC(S.client);const s=stats(c);const step=c.step||1;watchFiles(c.id);
   const q=S.q.trim().toLowerCase();const m=d=>!q||(d.code+' '+d.name+' '+d.en).toLowerCase().includes(q);
   const by=k=>DOCS.filter(d=>stOf(c,d.code)===k&&m(d));
-  const tabs=[['missing','Cần bổ sung',s.missing,'bad'],['review','Chờ duyệt',s.review,'warn'],['approved','Đã duyệt',s.approved,'ok'],['all','Tất cả tài liệu',DOCS.length,''],['info','Thông tin & thanh toán','',''],['email','Email nhắc khách','','']];
+  const tabs=[['missing','Cần bổ sung',s.missing,'bad'],['received','Đã nhận',s.rcv,'ok'],['review','Chờ duyệt',s.review,'warn'],['approved','Đã duyệt',s.approved,'ok'],['all','Tất cả tài liệu',DOCS.length,''],['info','Thông tin & thanh toán','',''],['email','Email nhắc khách','','']];
   let body='';
   if(S.tab==='missing'){const l=by('missing');body=l.length?`<div class="banner" style="margin:16px 18px 0">${I('info')}<div>Mỗi thẻ là một tài liệu khách chưa nộp. Kéo tệp vào ô của thẻ (hoặc bấm vào ô) để lưu. Tệp lưu xong, tài liệu chuyển sang <b>Chờ duyệt</b>.</div></div>`+groupedCards(c,l,'missing'):`<div class="doneall">${I('check',20)}Không còn tài liệu bắt buộc nào thiếu.</div>`}
+  else if(S.tab==='received'){const l=DOCS.filter(d=>isRcv(c,d.code)&&m(d));body=l.length?`<div class="banner ok" style="margin:16px 18px 0">${I('check')}<div>Khách đã nộp <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc: <b>${s.approved}</b> đã duyệt, <b>${s.review}</b> đang chờ duyệt. Ngày nhận là ngày tệp đầu tiên được tải lên.</div></div><div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th class="r">Số tệp</th><th>Ngày nhận</th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=l.filter(d=>d.group===g);if(!ds.length)return'';return `<tr class="grp"><td colspan="5">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const st=stOf(c,d.code);return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="r num">${filesOf(c,d.code).length||'—'}</td><td class="num">${fmtDate(rcvDate(c,d.code))||'<span class="muted">—</span>'}</td></tr>`}).join('')}).join('')}</tbody></table></div>`:`<div class="empty"><b>Chưa nhận tài liệu nào</b>Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.</div>`}
   else if(S.tab==='review'){const l=by('review');body=l.length?groupedCards(c,l,'review'):`<div class="empty"><b>Không có tài liệu chờ duyệt</b>Tệp mới tải lên sẽ xuất hiện ở đây.</div>`}
   else if(S.tab==='approved'){const l=by('approved');body=l.length?groupedCards(c,l,'approved'):`<div class="empty"><b>Chưa có tài liệu nào được duyệt</b></div>`}
   else if(S.tab==='all'){body=`<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th>Tệp</th><th>Ghi chú</th><th>Cập nhật</th><th></th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g&&m(d));if(!ds.length)return'';return `<tr class="grp"><td colspan="7">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const x=(c.docs||{})[d.code]||{},st=stOf(c,d.code),n=filesOf(c,d.code).length;return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="num">${n?`${I('file',13)} ${n}`:'—'}</td><td class="dnote" style="max-width:240px">${esc(x.note||'')}</td><td class="dnote">${fmtTime(x.at)}</td><td class="r"><button class="btn sm ghost" data-doc="${d.code}">Mở</button></td></tr>`}).join('')}).join('')}</tbody></table></div>`}
@@ -383,7 +391,7 @@ function vCase(){
         <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>${esc(c.office||'—')}</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
-      <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
+      <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-approved">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
     <div class="steps">${STEPS.map((x,i)=>`<div class="stp ${i+1<step?'done':i+1===step?'cur':''}">${R.canWrite?`<button data-step="${i+1}" title="Chuyển hồ sơ sang bước ${i+1}">`:'<div style="display:flex;gap:10px">'}<span class="n">${i+1<step?I('check',12):i+1}</span><span><b>${x.t}</b><span>${x.d}</span></span>${R.canWrite?'</button>':'</div>'}</div>`).join('')}</div>
   </section>
@@ -507,6 +515,6 @@ document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.clo
 document.addEventListener('drop',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(!z)return;e.preventDefault();z.classList.remove('over');const c=getC(S.client);if(c&&e.dataTransfer.files.length)uploadFiles(c,z.dataset.drop,e.dataTransfer.files)});
 $('file').addEventListener('change',e=>{const c=getC(S.client);if(c&&upTarget)uploadFiles(c,upTarget,e.target.files);upTarget=null});
 $('scrim').addEventListener('click',closeDrawer);
-$('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
+$('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
 function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.client:S.view))}catch(_){}}
 (function boot(){const h=(location.hash||'').slice(1);if(h==='admin')S.view='admin';else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
