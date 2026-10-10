@@ -213,6 +213,46 @@ async function zipCase(c){
   }catch(e){toast('Đóng gói thất bại: '+(e.message||e))}
 }
 const csvCell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+
+/* ---------- biên bản tiếp nhận hồ sơ (in / lưu PDF) ---------- */
+function receiptHTML(c){
+  const now=new Date(),p=n=>String(n).padStart(2,'0'),today=`${p(now.getDate())}/${p(now.getMonth()+1)}/${now.getFullYear()}`;
+  const no=`BB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
+  const s=stats(c),got=DOCS.filter(d=>isRcv(c,d.code)),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
+  let i=0;
+  const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')}).join('');
+  const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
+  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng tiếp nhận',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Bước hiện tại',`${c.step||1}/5 · ${STEPS[(c.step||1)-1].t}`],['Ngày lập',today]];
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Biên bản tiếp nhận ${esc(c.id)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>@page{size:A4;margin:12mm 14mm 14mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Montserrat,Arial,sans-serif;font-size:9.5pt;line-height:1.45;color:#14201A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hd{display:flex;align-items:center;justify-content:space-between;background:#1B6B1B;border-radius:3mm;padding:3mm 5mm;color:#F5C400}.hd img{height:13mm;display:block}.hd .r{text-align:right;font-weight:800;font-size:13pt;letter-spacing:.06em}.hd .r small{display:block;font-size:7pt;font-weight:600;letter-spacing:.18em;color:#fff;margin-top:.6mm}
+.yl{height:1mm;background:#F5C400;margin:1.2mm 0 6mm;border-radius:1mm}
+h1{text-align:center;font-size:16pt;font-weight:800;letter-spacing:.02em;color:#14201A}.sub{text-align:center;color:#5B6B60;margin-top:1mm;font-size:9pt}.sub b{color:#1B6B1B}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:1.6mm 8mm;margin:6mm 0 5mm;padding:4mm 5mm;border:.6pt solid #D5E4D0;border-radius:2.5mm;background:#F6FAF4}.info div{display:flex;gap:2mm}.info dt{color:#5B6B60;min-width:36mm}.info dd{font-weight:600}
+h2{font-size:10.5pt;font-weight:700;color:#1B6B1B;margin:5mm 0 2.4mm;display:flex;justify-content:space-between;align-items:baseline;border-bottom:.8pt solid #1B6B1B;padding-bottom:1.4mm}h2 span{font-size:8.5pt;color:#5B6B60;font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:8.6pt}th{background:#E8F2E5;color:#1B6B1B;font-size:7.2pt;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:2mm 2mm;border:.5pt solid #D5E4D0}td{padding:1.7mm 2mm;border:.5pt solid #DCE8D7;vertical-align:top}tr{page-break-inside:avoid}
+tr.g td{background:#F6FAF4;font-weight:700;font-size:8pt}.c{text-align:center;white-space:nowrap}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:8pt;white-space:nowrap}.en{color:#8A978E;font-size:7.4pt}
+.tag{display:inline-block;border-radius:5mm;padding:.3mm 2.2mm;font-size:7.2pt;font-weight:600}.tag.ok{background:#E5F3E9;color:#17663A}.tag.wt{background:#FCF1D3;color:#8A5A00}
+ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{margin-bottom:1mm;break-inside:avoid}ul.miss i{color:#5B6B60}
+.note{margin-top:5mm;padding:3.4mm 4.5mm;border-left:1mm solid #F5C400;background:#FDF6DA;border-radius:0 2mm 2mm 0;font-size:8.6pt}
+.sig{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm;text-align:center;page-break-inside:avoid}.sig b{display:block;font-size:9pt}.sig span{display:block;color:#5B6B60;font-size:8pt;font-style:italic}.sig .ln{height:24mm}.sig .nm{font-weight:700}
+.ft{margin-top:8mm;border-top:.8pt solid #F5C400;padding-top:1.6mm;font-size:6.8pt;color:#5B6B60;display:flex;justify-content:space-between;gap:4mm}.ft b{color:#1B6B1B}
+.bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}.bar button{font:600 13px Montserrat,Arial;padding:8px 14px;border-radius:8px;border:1px solid #1B6B1B;background:#1B6B1B;color:#fff;cursor:pointer}.bar button.s{background:#fff;color:#1B6B1B}@media print{.bar{display:none}}
+@media screen{body{max-width:210mm;margin:16px auto;padding:14mm;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)}html{background:#EEF2EC}}</style></head><body>
+<div class="bar"><button onclick="print()">In / Lưu PDF</button><button class="s" onclick="close()">Đóng</button></div>
+<div class="hd"><img src="${location.origin}/logo-idc.jpg" alt="IDC VIETNAM"><div class="r">IDC VIETNAM<small>SHAPE YOUR FUTURE</small></div></div><div class="yl"></div>
+<h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
+<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
+<h2>I. Tài liệu IDC VIETNAM đã nhận <span>${s.rcv}/${s.req} tài liệu bắt buộc · ${s.approved} đã kiểm tra, ${s.review} đang kiểm tra</span></h2>
+${got.length?`<table><thead><tr><th class="c" style="width:9mm">STT</th><th style="width:17mm">Mã</th><th>Tên tài liệu</th><th class="c" style="width:14mm">Số tệp</th><th class="c" style="width:23mm">Ngày nhận</th><th class="c" style="width:27mm">Tình trạng</th></tr></thead><tbody>${rows}</tbody></table>`:'<p>Chưa có tài liệu nào được tiếp nhận.</p>'}
+${miss.length?`<h2>II. Tài liệu cần bổ sung <span>${miss.length} tài liệu</span></h2><ul class="miss">${missList}</ul>`:`<h2>II. Tài liệu cần bổ sung <span>Không còn</span></h2><p>Khách hàng đã nộp đủ tài liệu bắt buộc.</p>`}
+<div class="note">IDC VIETNAM xác nhận đã tiếp nhận các tài liệu nêu tại Mục I dưới dạng bản scan/điện tử vào ngày ghi ở cột "Ngày nhận". Việc tiếp nhận chưa phải là xác nhận tài liệu đã đạt yêu cầu; tài liệu "Đang kiểm tra" có thể được yêu cầu bổ sung hoặc chỉnh sửa theo ý kiến của luật sư. Biên bản được lập thành 02 bản, mỗi bên giữ 01 bản.</div>
+<div class="sig"><div><b>ĐẠI DIỆN KHÁCH HÀNG</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.name||'')}</div></div><div><b>ĐẠI DIỆN IDC VIETNAM</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.staff||'')}</div></div></div>
+<div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div>
+</body></html>`;
+}
+function openReceipt(c){const w=window.open('','_blank');if(!w){toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.');return}w.document.open();w.document.write(receiptHTML(c));w.document.close()}
 function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
@@ -389,7 +429,7 @@ function vCase(){
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
         <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>${esc(c.office||'—')}</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-approved">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
@@ -499,6 +539,7 @@ document.addEventListener('click',async e=>{
     case 'editClient':return openDrawer('client','edit');
     case 'exportExcel':return exportExcel();
     case 'zip':return zipCase(c);
+    case 'receipt':return openReceipt(c);
     case 'checklistCsv':return saveFile(`${c.id}_Checklist-L1A.csv`,checklistCSV(c));
     case 'emailTxt':return saveFile(`${c.id}_Email-bo-sung-ho-so.txt`,emailText(c));
     case 'copyEmail':{try{await navigator.clipboard.writeText(emailText(c));toast('Đã sao chép email')}catch(_){const r=document.createRange();r.selectNodeContents($('mailbody'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('Đã chọn nội dung – nhấn Ctrl/Cmd + C')}return}
