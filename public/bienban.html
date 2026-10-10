@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Biên bản tiếp nhận hồ sơ · IDC VIETNAM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>body{font-family:Montserrat,Arial,sans-serif;background:#EEF2EC;color:#14201A}.msg{max-width:520px;margin:80px auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #DCE8D7;font-size:14px;line-height:1.6}</style>
+<script src="/vendor/html2pdf.bundle.min.js" defer></script>
+</head>
+<body>
+<div class="msg" id="msg">Đang tạo biên bản…</div>
+<script>
+(function () {
+  var id = new URLSearchParams(location.search).get('id');
+  var o = null;
+  try { o = window.opener; } catch (e) {}
+  var html = null; try { html = o && o.receiptFor && o.receiptFor(id); } catch (e) {}
+  if (!html) {
+    document.getElementById('msg').innerHTML = 'Không tìm thấy dữ liệu hồ sơ. Hãy đóng trang này và bấm lại nút <b>Biên bản tiếp nhận</b> trong portal.';
+    return;
+  }
+  var src = new DOMParser().parseFromString(html, 'text/html');
+  document.title = src.title;
+  src.querySelectorAll('style').forEach(function (st) { document.head.appendChild(st); });
+  document.body.innerHTML = src.body.innerHTML;
+  var b = document.getElementById('dl'), doc = document.getElementById('doc');
+  b.onclick = async function () {
+    if (typeof html2pdf === 'undefined') { alert('Chưa tải xong công cụ tạo PDF, vui lòng thử lại sau vài giây.'); return; }
+    b.disabled = true; b.textContent = 'Đang tạo PDF…';
+    try {
+      await document.fonts.ready;
+      await html2pdf().set({
+        margin: [12, 14, 12, 14], filename: (doc.dataset.no || 'Bien-ban') + '.pdf',
+        image: { type: 'jpeg', quality: 0.96 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.sig', '.note', 'h2'] }
+      }).from(doc).save();
+    } catch (e) { alert('Không tạo được PDF: ' + e.message + '. Hãy dùng nút In → Lưu dưới dạng PDF.'); }
+    b.disabled = false; b.textContent = 'Tải file PDF';
+  };
+})();
+</script>
+</body>
+</html>

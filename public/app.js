@@ -224,7 +224,7 @@ function receiptHTML(c){
   const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
   const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng tiếp nhận',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Bước hiện tại',`${c.step||1}/5 · ${STEPS[(c.step||1)-1].t}`],['Ngày lập',today]];
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Biên bản tiếp nhận ${esc(c.id)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" onload="this.rel='stylesheet'">
 <style>@page{size:A4;margin:12mm 14mm 14mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Montserrat,Arial,sans-serif;font-size:9.5pt;line-height:1.45;color:#14201A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .hd{display:flex;align-items:center;justify-content:space-between;background:#1B6B1B;border-radius:3mm;padding:3mm 5mm;color:#F5C400}.hd img{height:13mm;display:block}.hd .r{text-align:right;font-weight:800;font-size:13pt;letter-spacing:.06em}.hd .r small{display:block;font-size:7pt;font-weight:600;letter-spacing:.18em;color:#fff;margin-top:.6mm}
 .yl{height:1mm;background:#F5C400;margin:1.2mm 0 6mm;border-radius:1mm}
@@ -238,10 +238,10 @@ ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{mar
 .note{margin-top:5mm;padding:3.4mm 4.5mm;border-left:1mm solid #F5C400;background:#FDF6DA;border-radius:0 2mm 2mm 0;font-size:8.6pt}
 .sig{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm;text-align:center;page-break-inside:avoid}.sig b{display:block;font-size:9pt}.sig span{display:block;color:#5B6B60;font-size:8pt;font-style:italic}.sig .ln{height:24mm}.sig .nm{font-weight:700}
 .ft{margin-top:8mm;border-top:.8pt solid #F5C400;padding-top:1.6mm;font-size:6.8pt;color:#5B6B60;display:flex;justify-content:space-between;gap:4mm}.ft b{color:#1B6B1B}
-.bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}.bar button{font:600 13px Montserrat,Arial;padding:8px 14px;border-radius:8px;border:1px solid #1B6B1B;background:#1B6B1B;color:#fff;cursor:pointer}.bar button.s{background:#fff;color:#1B6B1B}@media print{.bar{display:none}}
+.bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}.bar button{font:600 13px Montserrat,Arial;padding:8px 14px;border-radius:8px;border:1px solid #1B6B1B;background:#1B6B1B;color:#fff;cursor:pointer}.bar button.s{background:#fff;color:#1B6B1B}@media print{.bar{display:none}}#doc{width:182mm}body.exp{box-shadow:none}
 @media screen{body{max-width:210mm;margin:16px auto;padding:14mm;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)}html{background:#EEF2EC}}</style></head><body>
-<div class="bar"><button onclick="print()">In / Lưu PDF</button><button class="s" onclick="close()">Đóng</button></div>
-<div class="hd"><img src="${location.origin}/logo-idc.jpg" alt="IDC VIETNAM"><div class="r">IDC VIETNAM<small>SHAPE YOUR FUTURE</small></div></div><div class="yl"></div>
+<div class="bar"><button id="dl">Tải file PDF</button><button class="s" onclick="print()">In</button><button class="s" onclick="close()">Đóng</button></div>
+<div id="doc" data-no="${no}"><div class="hd"><img src="${location.origin}/logo-idc.jpg" alt="IDC VIETNAM"><div class="r">IDC VIETNAM<small>SHAPE YOUR FUTURE</small></div></div><div class="yl"></div>
 <h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
 <dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
 <h2>I. Tài liệu IDC VIETNAM đã nhận <span>${s.rcv}/${s.req} tài liệu bắt buộc · ${s.approved} đã kiểm tra, ${s.review} đang kiểm tra</span></h2>
@@ -249,10 +249,11 @@ ${got.length?`<table><thead><tr><th class="c" style="width:9mm">STT</th><th styl
 ${miss.length?`<h2>II. Tài liệu cần bổ sung <span>${miss.length} tài liệu</span></h2><ul class="miss">${missList}</ul>`:`<h2>II. Tài liệu cần bổ sung <span>Không còn</span></h2><p>Khách hàng đã nộp đủ tài liệu bắt buộc.</p>`}
 <div class="note">IDC VIETNAM xác nhận đã tiếp nhận các tài liệu nêu tại Mục I dưới dạng bản scan/điện tử vào ngày ghi ở cột "Ngày nhận". Việc tiếp nhận chưa phải là xác nhận tài liệu đã đạt yêu cầu; tài liệu "Đang kiểm tra" có thể được yêu cầu bổ sung hoặc chỉnh sửa theo ý kiến của luật sư. Biên bản được lập thành 02 bản, mỗi bên giữ 01 bản.</div>
 <div class="sig"><div><b>ĐẠI DIỆN KHÁCH HÀNG</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.name||'')}</div></div><div><b>ĐẠI DIỆN IDC VIETNAM</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.staff||'')}</div></div></div>
-<div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div>
+<div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
 </body></html>`;
 }
-function openReceipt(c){const w=window.open('','_blank');if(!w){toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.');return}w.document.open();w.document.write(receiptHTML(c));w.document.close()}
+window.receiptFor=id=>{const c=getC(id);return c?receiptHTML(c):null};
+function openReceipt(c){const w=window.open('/bienban.html?id='+encodeURIComponent(c.id),'_blank');if(!w)toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.')}
 function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
