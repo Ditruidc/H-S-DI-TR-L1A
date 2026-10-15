@@ -100,21 +100,23 @@
   }
   const pk = { staff: 'email', clients: 'id', files: 'id', settings: 'key' };
   function Q(table) {
-    const st = { op: 'select', filters: [], order: null, single: false, payload: null };
+    const st = { op: 'select', filters: [], gte: [], order: null, desc: false, limit: 0, single: false, payload: null };
     const q = {
       select() { return q; }, eq(k, v) { st.filters.push([k, v]); return q; },
-      order(k) { st.order = k; return q; }, maybeSingle() { st.single = true; return q; },
+      order(k, o) { st.order = k; st.desc = !!(o && o.ascending === false); return q; }, gte(k, v) { st.gte.push([k, v]); return q; }, limit(n) { st.limit = n; return q; }, maybeSingle() { st.single = true; return q; },
       insert(p) { st.op = 'insert'; st.payload = p; return q; }, upsert(p) { st.op = 'upsert'; st.payload = p; return q; },
       update(p) { st.op = 'update'; st.payload = p; return q; }, delete() { st.op = 'delete'; return q; },
       then(res, rej) { return Promise.resolve(run()).then(res, rej); }
     };
     function run() {
       const rows = DB[table] || (DB[table] = []);
-      const match = r => st.filters.every(([k, v]) => r[k] === v);
+      const match = r => st.filters.every(([k, v]) => r[k] === v) && st.gte.every(([k, v]) => String(r[k]) >= String(v));
       const t = new Date().toISOString();
       if (st.op === 'select') {
         let out = rows.filter(match);
         if (st.order) out = out.slice().sort((a, b) => String(a[st.order]).localeCompare(String(b[st.order])));
+        if (st.desc) out = out.slice().reverse();
+        if (st.limit) out = out.slice(0, st.limit);
         return { data: st.single ? clone(out[0] || null) : clone(out), error: null };
       }
       const list = [].concat(st.payload || []);
@@ -140,6 +142,7 @@
       getSession: async () => ({ data: { session } }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       signInWithPassword: async () => ({ data: { session }, error: null }),
+      updateUser: async () => ({ data: {}, error: null }),
       signOut: async () => { setTimeout(() => window.toast && toast('Đây là bản xem thử, không cần đăng xuất.'), 50); return { error: null }; }
     },
     from: t => Q(t),

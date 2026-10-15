@@ -17,7 +17,7 @@ ext:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2
 undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
 mail:'<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
 info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',list:'<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
-clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'};
+bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'};
 const I=(n,s)=>`<svg class="i" viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''} aria-hidden="true">${P[n]}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -96,7 +96,7 @@ async function initRuntime(){
 }
 let channel=null;
 async function afterAuth(){
-  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}render();return}
+  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}bellReset();render();return}
   R.email=(R.session.user.email||'').toLowerCase();R.ready=false;render();
   const me=await R.sb.from('staff').select('email,role,name').eq('email',R.email).maybeSingle();
   if(me.error||!me.data){R.role=null;R.canWrite=false;R.ready=true;R.err=me.error?{message:me.error.message}:{code:'not_staff'};render();return}
@@ -104,10 +104,11 @@ async function afterAuth(){
   const st=await R.sb.from('settings').select('value').eq('key','program_l1a').maybeSingle();
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadClients();
+  bellStart();
   if(S.view==='admin')loadStaff();
   if(!channel){channel=R.sb.channel('hoso-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'clients'},()=>loadClients())
-    .on('postgres_changes',{event:'*',schema:'public',table:'files'},p=>{const cid=(p.new&&p.new.client_id)||(p.old&&p.old.client_id);if(cid&&cid===R.filesFor)loadFiles(cid,true)})
+    .on('postgres_changes',{event:'*',schema:'public',table:'files'},p=>{const cid=(p.new&&p.new.client_id)||(p.old&&p.old.client_id);if(cid&&cid===R.filesFor)loadFiles(cid,true);bellLive(p)})
     .subscribe()}
 }
 async function loadClients(){
@@ -122,6 +123,87 @@ async function loadFiles(id){
   if(r.error){toast('Không đọc được danh sách tệp: '+r.error.message);return}
   R.files[id]=r.data.map(rowToFile);render();refreshDrawer();
 }
+
+/* ---------- chuông thông báo: tệp mới do người khác tải lên ---------- */
+const BELL={items:[],seen:0,open:false,names:{},timer:null,poll:null,known:new Set()};
+const bellKey=()=>'idc_bell_seen_'+(R.email||'');
+function bellReset(){BELL.items=[];BELL.open=false;BELL.known=new Set();clearInterval(BELL.poll);BELL.poll=null;renderBell()}
+function bellStart(){
+  const meta=(R.session&&R.session.user&&R.session.user.user_metadata)||{};let ls=0;try{ls=Date.parse(localStorage.getItem(bellKey())||'')||0}catch(_){}
+  /* lần đầu dùng: coi tệp trong 3 ngày gần nhất là chưa xem */
+  BELL.seen=Math.max(Date.parse(meta.bell_seen||'')||0,ls)||Date.now()-3*864e5;
+  loadBell(true);clearInterval(BELL.poll);BELL.poll=setInterval(()=>loadBell(),120000);
+}
+async function loadBell(first){
+  if(!R.sb||!R.email)return;
+  const since=new Date(Date.now()-30*864e5).toISOString();
+  const r=await R.sb.from('files').select('id,client_id,code,name,created_at,created_by').gte('created_at',since).order('created_at',{ascending:false}).limit(80);
+  if(r.error||!r.data)return;
+  if(!Object.keys(BELL.names).length){const s=await R.sb.from('staff').select('email,name');(s.data||[]).forEach(u=>{BELL.names[String(u.email).toLowerCase()]=u.name||''})}
+  /* gom các tệp cùng người, cùng hồ sơ, cách nhau dưới 15 phút thành 1 dòng */
+  const g=[];
+  for(const f of r.data){const by=String(f.created_by||'').toLowerCase(),at=Date.parse(f.created_at)||0,last=g[g.length-1];
+    if(last&&last.client===f.client_id&&last.by===by&&last.first-at<15*60e3){last.files.push(f);last.first=at}
+    else g.push({client:f.client_id,by,at,first:at,files:[f]})}
+  const fresh=first?[]:r.data.filter(f=>!BELL.known.has(f.id)&&String(f.created_by||'').toLowerCase()!==R.email);
+  r.data.forEach(f=>BELL.known.add(f.id));
+  BELL.items=g.slice(0,30);renderBell();
+  if(fresh.length)bellDesktop(fresh);
+}
+function bellLive(p){
+  const ev=p&&p.eventType;if(ev&&ev!=='INSERT'&&ev!=='DELETE')return;
+  clearTimeout(BELL.timer);BELL.timer=setTimeout(()=>loadBell(),2500);
+}
+const bellWho=by=>by===R.email?'Bạn':(BELL.names[by]||(by.split('@')[0])||'Ai đó');
+const bellUnread=()=>BELL.items.filter(x=>x.by!==R.email&&x.at>BELL.seen);
+function relTime(t){const s=(Date.now()-t)/1000;if(s<60)return'vừa xong';if(s<3600)return Math.floor(s/60)+' phút trước';if(s<86400)return Math.floor(s/3600)+' giờ trước';if(s<172800)return'hôm qua';return fmtDate(new Date(t).toISOString())}
+function bellLine(x){
+  const c=getC(x.client),codes=[...new Set(x.files.map(f=>f.code))];
+  const docs=codes.slice(0,3).map(k=>k+(DOC[k]?' · '+DOC[k].name:'')).join(', ')+(codes.length>3?` (+${codes.length-3})`:'');
+  return `<button type="button" class="bp-item${x.by!==R.email&&x.at>BELL.seen?' un':''}" data-bellopen="${esc(x.client)}"><span class="bp-dot" aria-hidden="true"></span><span class="bp-t"><span><b>${esc(bellWho(x.by))}</b> đã tải ${x.files.length} tệp lên <b>${esc(x.client)}</b>${c&&c.name?' · '+esc(c.name):''}</span><span class="bp-s">${esc(docs)}</span><span class="bp-s">${esc(relTime(x.at))}</span></span></button>`;
+}
+function bellPanel(){
+  const n=bellUnread().length;
+  const perm=('Notification' in window)&&Notification.permission==='default'?`<button type="button" class="bp-perm" data-bellperm>${I('bell',15)}<span>Hiện thông báo trên máy tính khi có tệp mới</span></button>`:'';
+  return `<div class="bp-h"><b>Thông báo</b><span>${n?n+' mục mới':'Tệp tải lên 30 ngày qua'}</span></div>${perm}`+
+    (BELL.items.length?`<div class="bp-list">${BELL.items.map(bellLine).join('')}</div>`:`<div class="bp-empty">Chưa có tệp nào được tải lên trong 30 ngày qua.</div>`);
+}
+function renderBell(){
+  const b=$('bell');if(!b)return;
+  const show=!!(R.email&&R.role&&!R.err);b.hidden=!show;if(!show){$('bell-panel').hidden=true;document.title='IDC Case Portal L-1A';return}
+  const n=bellUnread().reduce((a,x)=>a+x.files.length,0),bd=$('bell-n');
+  bd.textContent=n>99?'99+':String(n);bd.hidden=!n;
+  b.setAttribute('aria-label',n?`Thông báo: ${n} tệp mới`:'Thông báo');b.setAttribute('aria-expanded',String(BELL.open));
+  document.title=(n?`(${n}) `:'')+'IDC Case Portal L-1A';
+  const pn=$('bell-panel');pn.hidden=!BELL.open;if(BELL.open){pn.innerHTML=bellPanel();pn.style.top=matchMedia('(max-width:640px)').matches?Math.round(b.getBoundingClientRect().bottom+8)+'px':''}
+}
+function bellMarkSeen(){
+  const top=BELL.items.length?BELL.items[0].at:0;BELL.seen=Math.max(top,BELL.seen);const iso=new Date(BELL.seen).toISOString();
+  try{localStorage.setItem(bellKey(),iso)}catch(_){}
+  if(R.sb&&R.sb.auth.updateUser)R.sb.auth.updateUser({data:{bell_seen:iso}}).catch(()=>{});
+}
+function toggleBell(open){
+  BELL.open=open===undefined?!BELL.open:open;
+  if(BELL.open){renderBell();bellMarkSeen();$('bell-n').hidden=true;document.title='IDC Case Portal L-1A'}else renderBell();
+}
+function bellDesktop(fresh){
+  const byClient={};fresh.forEach(f=>{(byClient[f.client_id]=byClient[f.client_id]||[]).push(f)});
+  Object.entries(byClient).forEach(([cid,fs])=>{const c=getC(cid),who=bellWho(String(fs[0].created_by||'').toLowerCase());
+    const msg=`${who} đã tải ${fs.length} tệp lên ${cid}${c&&c.name?' · '+c.name:''}`;
+    if(document.hidden&&('Notification' in window)&&Notification.permission==='granted'){
+      try{const n=new Notification('IDC Portal · Tệp mới',{body:msg,tag:'idc-'+cid});n.onclick=()=>{window.focus();bellOpenCase(cid);n.close()}}catch(_){}
+    }else toast(msg);
+  });
+}
+function bellOpenCase(cid){toggleBell(false);if(!getC(cid)){toast('Hồ sơ '+cid+' không còn trên portal.');return}
+  S.view='case';S.client=cid;S.tab='review';S.q='';$('q').value='';closeDrawer();setHash();render();window.scrollTo(0,0)}
+document.addEventListener('click',e=>{
+  if(e.target.closest('#bell')){toggleBell();return}
+  const it=e.target.closest('[data-bellopen]');if(it){bellOpenCase(it.dataset.bellopen);return}
+  if(e.target.closest('[data-bellperm]')){Notification.requestPermission().then(()=>renderBell());return}
+  if(BELL.open&&!e.target.closest('#bellwrap'))toggleBell(false);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&BELL.open){toggleBell(false);$('bell').focus()}});
 async function signedUrl(f){
   const k=f.path,c=R.urls[k];if(c&&c.exp>Date.now()+60000)return c.url;
   const r=await R.sb.storage.from(BUCKET).createSignedUrl(f.path,3600);

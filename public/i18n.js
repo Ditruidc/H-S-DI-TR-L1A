@@ -21,6 +21,8 @@
     'Đã nhận': 'Received', 'Biên bản tiếp nhận': 'Receipt record', 'Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.': 'The browser blocked the new window. Allow pop-ups for this site.', 'Tài liệu đã nhận': 'Documents received', 'Ngày nhận': 'Received on', 'Chưa nhận tài liệu nào': 'No documents received yet',
     'Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.': 'Documents the client submits will appear here with the date received.',
     // Thông báo email
+    'Thông báo': 'Notifications', 'vừa xong': 'just now', 'hôm qua': 'yesterday', 'Tệp tải lên 30 ngày qua': 'Uploads in the last 30 days',
+    'Chưa có tệp nào được tải lên trong 30 ngày qua.': 'No files uploaded in the last 30 days.', 'Hiện thông báo trên máy tính khi có tệp mới': 'Show desktop alerts for new files',
     'Thông báo tệp mới': 'New-file notifications', 'Bật thông báo': 'Enable notifications', 'Gửi qua email': 'Send by email', 'Gửi thêm qua Zalo': 'Also send via Zalo',
     'Báo cho mọi người trên portal khi có tệp mới (5–8 phút) và tổng hợp lúc 17:00.': 'Alerts everyone on the portal about new files (within 5–8 minutes) plus a 17:00 summary.',
     'Nhận thông báo': 'Notifications', 'Nhận': 'On', 'Email nhận thêm': 'Extra email recipients', '(người không có tài khoản portal)': '(people without a portal account)',
@@ -130,6 +132,8 @@
     [/^Không lưu được (.+)$/, 'Could not save $1'], [/^Không tải lên được (.+)$/, 'Could not upload $1'], [/^Không mở được tệp: (.+)$/, 'Could not open file: $1'],
     [/^Không đọc được danh sách tệp: (.+)$/, 'Could not read the file list: $1'],
     [/^([A-Z]{2}-\d{2}): thêm (\d+) tệp$/, '$1: added $2 file(s)'], [/^([A-Z]{2}-\d{2}): xoá tệp (.+)$/, '$1: deleted file $2'],
+    [/^đã tải (\d+) tệp lên$/, 'uploaded $1 file(s) to'], [/^(\d+) phút trước$/, '$1 min ago'], [/^(\d+) giờ trước$/, '$1 h ago'], [/^(\d+) mục mới$/, '$1 new'],
+    [/^Thông báo: (\d+) tệp mới$/, 'Notifications: $1 new files'], [/^(.+) đã tải (\d+) tệp lên (.+)$/, '$1 uploaded $2 file(s) to $3'], [/^Hồ sơ (.+) không còn trên portal\.$/, 'Case $1 is no longer on the portal.'],
     [/^([A-Z]{2}-\d{2}): (.+)$/, (m, a, b) => a + ': ' + tr(b)]
   ];
   let docMap = null;
