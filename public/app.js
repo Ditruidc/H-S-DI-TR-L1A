@@ -305,15 +305,9 @@ async function zipCase(c){
 const csvCell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
 
 /* ---------- biên bản tiếp nhận hồ sơ (in / lưu PDF) ---------- */
-function receiptHTML(c){
-  const now=new Date(),p=n=>String(n).padStart(2,'0'),today=`${p(now.getDate())}/${p(now.getMonth()+1)}/${now.getFullYear()}`;
-  const no=`BB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
-  const s=stats(c),got=DOCS.filter(d=>isRcv(c,d.code)),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
-  let i=0;
-  const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')}).join('');
-  const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
-  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng tiếp nhận',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Bước hiện tại',`${c.step||1}/5 · ${STEPS[(c.step||1)-1].t}`],['Ngày lập',today]];
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Biên bản tiếp nhận ${esc(c.id)}</title>
+/* phần đầu chung cho văn bản in (biên bản, thông báo bổ sung) */
+function docHead(title,no){
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" onload="this.rel='stylesheet'">
 <style>@page{size:A4;margin:12mm 14mm 14mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Montserrat,Arial,sans-serif;font-size:9.5pt;line-height:1.45;color:#14201A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .hd{display:flex;align-items:center;justify-content:space-between;background:#1B6B1B;border-radius:3mm;padding:3mm 5mm;color:#F5C400}.hd img{height:13mm;display:block}.hd .r{text-align:right;font-weight:800;font-size:13pt;letter-spacing:.06em}.hd .r small{display:block;font-size:7pt;font-weight:600;letter-spacing:.18em;color:#fff;margin-top:.6mm}
@@ -325,6 +319,9 @@ table{width:100%;border-collapse:collapse;font-size:8.6pt}th{background:#E8F2E5;
 tr.g td{background:#F6FAF4;font-weight:700;font-size:8pt}.c{text-align:center;white-space:nowrap}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:8pt;white-space:nowrap}.en{color:#8A978E;font-size:7.4pt}
 .tag{display:inline-block;border-radius:5mm;padding:.3mm 2.2mm;font-size:7.2pt;font-weight:600}.tag.ok{background:#E5F3E9;color:#17663A}.tag.wt{background:#FCF1D3;color:#8A5A00}
 ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{margin-bottom:1mm;break-inside:avoid}ul.miss i{color:#5B6B60}
+.ed{outline:none;border-bottom:.8pt dashed #1B6B1B;padding:0 .8mm;font-weight:700;color:#1B6B1B}@media print{.ed{border-bottom:0}}
+.lt p{margin:0 0 2.4mm}.lt ul{padding-left:5mm;margin:0 0 2mm}.lt li{margin-bottom:1.2mm}.req{font-weight:600}.hint{color:#5B6B60;font-size:7.6pt;margin-top:.6mm}
+.sig.one{grid-template-columns:1fr 1fr}.sig.one>div:first-child{visibility:hidden}
 .note{margin-top:5mm;padding:3.4mm 4.5mm;border-left:1mm solid #F5C400;background:#FDF6DA;border-radius:0 2mm 2mm 0;font-size:8.6pt}
 .sig{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm;text-align:center;page-break-inside:avoid}.sig b{display:block;font-size:9pt}.sig span{display:block;color:#5B6B60;font-size:8pt;font-style:italic}.sig .ln{height:24mm}.sig .nm{font-weight:700}
 .ft{margin-top:8mm;border-top:.8pt solid #F5C400;padding-top:1.6mm;font-size:6.8pt;color:#5B6B60;display:flex;justify-content:space-between;gap:4mm}.ft b{color:#1B6B1B}
@@ -332,7 +329,18 @@ ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{mar
 @media screen{body{max-width:210mm;margin:16px auto;padding:14mm;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)}html{background:#EEF2EC}}</style></head><body>
 <div class="bar"><button id="dl">Tải file PDF</button><button class="s" onclick="print()">In</button><button class="s" onclick="close()">Đóng</button></div>
 <div id="doc" data-no="${no}"><div class="hd"><img src="${location.origin}/logo-idc.jpg" alt="IDC VIETNAM"><div class="r">IDC VIETNAM<small>SHAPE YOUR FUTURE</small></div></div><div class="yl"></div>
-<h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
+`;
+}
+
+function receiptHTML(c){
+  const now=new Date(),p=n=>String(n).padStart(2,'0'),today=`${p(now.getDate())}/${p(now.getMonth()+1)}/${now.getFullYear()}`;
+  const no=`BB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
+  const s=stats(c),got=DOCS.filter(d=>isRcv(c,d.code)),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
+  let i=0;
+  const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')}).join('');
+  const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
+  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng tiếp nhận',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Bước hiện tại',`${c.step||1}/5 · ${STEPS[(c.step||1)-1].t}`],['Ngày lập',today]];
+  return docHead(`Biên bản tiếp nhận ${c.id}`,no)+`<h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
 <dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
 <h2>I. Tài liệu IDC VIETNAM đã nhận <span>${s.rcv}/${s.req} tài liệu bắt buộc · ${s.approved} đã kiểm tra, ${s.review} đang kiểm tra</span></h2>
 ${got.length?`<table><thead><tr><th class="c" style="width:9mm">STT</th><th style="width:17mm">Mã</th><th>Tên tài liệu</th><th class="c" style="width:14mm">Số tệp</th><th class="c" style="width:23mm">Ngày nhận</th><th class="c" style="width:27mm">Tình trạng</th></tr></thead><tbody>${rows}</tbody></table>`:'<p>Chưa có tài liệu nào được tiếp nhận.</p>'}
@@ -342,8 +350,38 @@ ${miss.length?`<h2>II. Tài liệu cần bổ sung <span>${miss.length} tài li�
 <div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
 </body></html>`;
 }
-window.receiptFor=id=>{const c=getC(id);return c?receiptHTML(c):null};
-function openReceipt(c){const w=window.open('/bienban.html?id='+encodeURIComponent(c.id),'_blank');if(!w)toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.')}
+
+/* ---------- thông báo yêu cầu bổ sung hồ sơ (gửi khách) ---------- */
+function noticeHTML(c){
+  const now=new Date(),p=n=>String(n).padStart(2,'0'),dd=d=>`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`,today=dd(now);
+  const due=new Date(now.getTime()+14*864e5);
+  const no=`TB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
+  const s=stats(c),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
+  let i=0;
+  const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')}).join('');
+  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
+  const city=(c.office&&!/idc/i.test(c.office))?c.office:'TP.HCM';
+  return docHead(`Thông báo bổ sung ${c.id}`,no)+`<h1>THÔNG BÁO YÊU CẦU BỔ SUNG HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
+<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
+<div class="lt"><p>Kính gửi: Ông/Bà <b>${esc(c.name||'')}</b>${c.company?' – '+esc(c.company):''}</p>
+<p>IDC VIETNAM trân trọng cảm ơn Quý khách đã tin tưởng đồng hành cùng chúng tôi trong chương trình L-1A → EB-1C. Tính đến ngày ${today}, IDC VIETNAM đã tiếp nhận <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc của hồ sơ <b>${esc(c.id)}</b>.</p>
+${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ sơ, IDC VIETNAM kính đề nghị Quý khách bổ sung <b>${miss.length} tài liệu</b> dưới đây trước ngày <span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa hạn nộp">${dd(due)}</span>.</p></div>
+<h2>I. Danh sách tài liệu cần bổ sung <span>${miss.length} tài liệu</span></h2>
+<table><thead><tr><th class="c" style="width:9mm">STT</th><th style="width:17mm">Mã</th><th style="width:66mm">Tên tài liệu</th><th>Yêu cầu / lưu ý</th></tr></thead><tbody>${rows}</tbody></table>`:`<p>Hồ sơ hiện <b>đã đủ</b> các tài liệu bắt buộc. IDC VIETNAM sẽ liên hệ nếu luật sư cần Quý khách bổ sung hoặc chỉnh sửa thêm.</p></div>`}
+<h2>${miss.length?'II. ':''}Hướng dẫn gửi tài liệu</h2>
+<div class="lt"><ul>
+<li>Gửi <b>bản scan màu, rõ nét, đủ tất cả các trang</b> (PDF hoặc ảnh JPG/PNG); mỗi tài liệu một tệp, tên tệp ghi kèm mã tài liệu (ví dụ: <i>VN-01_Giay-phep-kinh-doanh.pdf</i>).</li>
+<li>Gửi trực tiếp cho chuyên viên phụ trách${c.staff?` <b>${esc(c.staff)}</b>`:''} qua email hoặc Zalo.</li>
+<li>Bản gốc hoặc bản sao công chứng chỉ cần gửi khi IDC VIETNAM có yêu cầu riêng.</li>
+<li>Trường hợp không có tài liệu hoặc tài liệu khác mẫu yêu cầu, Quý khách vui lòng liên hệ chuyên viên để được hướng dẫn phương án thay thế.</li>
+</ul></div>
+<div class="note">Việc bổ sung chậm hoặc thiếu tài liệu có thể ảnh hưởng đến thời gian hoàn thiện và nộp hồ sơ. Sau khi nhận đủ, IDC VIETNAM sẽ kiểm tra và gửi Quý khách Biên bản tiếp nhận hồ sơ cập nhật. Trân trọng cảm ơn sự hợp tác của Quý khách.</div>
+<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.staff||'')}</div></div></div>
+<div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
+</body></html>`;
+}
+window.receiptFor=(id,type)=>{const c=getC(id);return c?(type==='tb'?noticeHTML(c):receiptHTML(c)):null};
+function openReceipt(c,type){const w=window.open('/bienban.html?id='+encodeURIComponent(c.id)+(type?'&type='+type:''),'_blank');if(!w)toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.')}
 function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
@@ -542,7 +580,7 @@ function vCase(){
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
         <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>${esc(c.office||'—')}</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-approved">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
@@ -655,6 +693,7 @@ document.addEventListener('click',async e=>{
     case 'exportExcel':return exportExcel();
     case 'zip':return zipCase(c);
     case 'receipt':return openReceipt(c);
+    case 'notice':return openReceipt(c,'tb');
     case 'checklistCsv':return saveFile(`${c.id}_Checklist-L1A.csv`,checklistCSV(c));
     case 'emailTxt':return saveFile(`${c.id}_Email-bo-sung-ho-so.txt`,emailText(c));
     case 'copyEmail':{try{await navigator.clipboard.writeText(emailText(c));toast('Đã sao chép email')}catch(_){const r=document.createRange();r.selectNodeContents($('mailbody'));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('Đã chọn nội dung – nhấn Ctrl/Cmd + C')}return}

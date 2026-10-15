@@ -18,7 +18,7 @@
     'Đang tải dữ liệu…': 'Loading data…', 'Không đọc được dữ liệu': 'Could not load data', 'Chưa cấu hình Supabase (public/config.js).': 'Supabase is not configured (public/config.js).',
     'Bản xem thử · dữ liệu giả lập, thao tác không được lưu': 'Demo · sample data, changes are not saved',
     // Đã nhận
-    'Đã nhận': 'Received', 'Biên bản tiếp nhận': 'Receipt record', 'Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.': 'The browser blocked the new window. Allow pop-ups for this site.', 'Tài liệu đã nhận': 'Documents received', 'Ngày nhận': 'Received on', 'Chưa nhận tài liệu nào': 'No documents received yet',
+    'Đã nhận': 'Received', 'Biên bản tiếp nhận': 'Receipt record', 'Thông báo bổ sung': 'Document request', 'Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.': 'The browser blocked the new window. Allow pop-ups for this site.', 'Tài liệu đã nhận': 'Documents received', 'Ngày nhận': 'Received on', 'Chưa nhận tài liệu nào': 'No documents received yet',
     'Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.': 'Documents the client submits will appear here with the date received.',
     // Thông báo email
     'Thông báo': 'Notifications', 'vừa xong': 'just now', 'hôm qua': 'yesterday', 'Tệp tải lên 30 ngày qua': 'Uploads in the last 30 days',
