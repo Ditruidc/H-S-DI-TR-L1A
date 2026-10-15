@@ -319,7 +319,7 @@ table{width:100%;border-collapse:collapse;font-size:8.6pt}th{background:#E8F2E5;
 tr.g td{background:#F6FAF4;font-weight:700;font-size:8pt}.c{text-align:center;white-space:nowrap}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:8pt;white-space:nowrap}.en{color:#8A978E;font-size:7.4pt}
 .tag{display:inline-block;border-radius:5mm;padding:.3mm 2.2mm;font-size:7.2pt;font-weight:600}.tag.ok{background:#E5F3E9;color:#17663A}.tag.wt{background:#FCF1D3;color:#8A5A00}
 ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{margin-bottom:1mm;break-inside:avoid}ul.miss i{color:#5B6B60}
-.ed{outline:none;border-bottom:.8pt dashed #1B6B1B;padding:0 .8mm;font-weight:700;color:#1B6B1B}@media print{.ed{border-bottom:0}}
+.ed{outline:none;border-bottom:.8pt dashed #1B6B1B;padding:0 .8mm;font-weight:700;color:#1B6B1B}@media print{.ed{border-bottom:0}.ed:empty::before{content:""}}.ed:empty{display:inline-block;min-width:38mm}.ed:empty::before{content:attr(data-ph);color:#B9A27A;font-weight:500;font-style:italic}
 .lt p{margin:0 0 2.4mm}.lt ul{padding-left:5mm;margin:0 0 2mm}.lt li{margin-bottom:1.2mm}.req{font-weight:600}.hint{color:#5B6B60;font-size:7.6pt;margin-top:.6mm}
 .sig.one{grid-template-columns:1fr 1fr}.sig.one>div:first-child{visibility:hidden}
 .badge{display:block;width:max-content;margin:0 auto 2mm;border-radius:5mm;padding:.8mm 4mm;font-size:7.4pt;font-weight:800;letter-spacing:.14em}.badge.ok{background:#E5F3E9;color:#17663A;border:.6pt solid #B9DCC3}.badge.wt{background:#FEF3C7;color:#92400E;border:.6pt solid #FCD58A}
@@ -361,9 +361,9 @@ function noticeHTML(c){
   const s=stats(c),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   let i=0;
   const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')}).join('');
-  const handler=R.name||c.staff||'';
-  const ed=v=>`<span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa">${esc(v)}</span>`;
-  const info=[['Mã hồ sơ',esc(c.id)],['Đương đơn',esc(c.name||'—')],['Công ty',esc(c.company||'—')],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',esc(c.office||'IDC VIETNAM')],['Chuyên viên tư vấn',esc(c.staff||'—')],['Bộ phận tiếp nhận',ed('Phòng Hồ sơ Di trú')],['Người xử lý hồ sơ',ed(handler||'—')],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
+  const handler='';
+  const ed=(v,ph)=>`<span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa"${ph?` data-ph="${esc(ph)}"`:''}>${esc(v)}</span>`;
+  const info=[['Mã hồ sơ',esc(c.id)],['Đương đơn',esc(c.name||'—')],['Công ty',esc(c.company||'—')],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',esc(c.office||'IDC VIETNAM')],['Chuyên viên tư vấn',esc(c.staff||'—')],['Bộ phận tiếp nhận',ed('Phòng Hồ sơ Di trú')],['Người xử lý hồ sơ',ed('','Bấm để nhập tên')],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
   const city=(c.office&&!/idc/i.test(c.office))?c.office:'TP.HCM';
   return docHead(`Thông báo bổ sung ${c.id}`,no).replace('<div id="doc"','<div id="doc" class="tbdoc"')+`<span class="badge wt">! CẦN BỔ SUNG TÀI LIỆU</span><h1>THÔNG BÁO YÊU CẦU BỔ SUNG HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
 <dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${v}</dd></div>`).join('')}</dl>
@@ -375,12 +375,12 @@ ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ s�
 <h2>${miss.length?'II. ':''}Hướng dẫn gửi tài liệu</h2>
 <div class="lt"><ul>
 <li>Gửi <b>bản scan màu, rõ nét, đủ tất cả các trang</b> (PDF hoặc ảnh JPG/PNG); mỗi tài liệu một tệp, tên tệp ghi kèm mã tài liệu (ví dụ: <i>VN-01_Giay-phep-kinh-doanh.pdf</i>).</li>
-<li>Gửi cho người xử lý hồ sơ${handler?` <b>${esc(handler)}</b>`:''} (Phòng Hồ sơ Di trú) hoặc chuyên viên tư vấn${c.staff?` <b>${esc(c.staff)}</b>`:''} qua email hoặc Zalo.</li>
+<li>Gửi cho người xử lý hồ sơ (Phòng Hồ sơ Di trú) hoặc chuyên viên tư vấn${c.staff?` <b>${esc(c.staff)}</b>`:''} qua email hoặc Zalo.</li>
 <li>Bản gốc hoặc bản sao công chứng chỉ cần gửi khi IDC VIETNAM có yêu cầu riêng.</li>
 <li>Trường hợp không có tài liệu hoặc tài liệu khác mẫu yêu cầu, Quý khách vui lòng liên hệ chuyên viên để được hướng dẫn phương án thay thế.</li>
 </ul></div>
 <div class="note">Việc bổ sung chậm hoặc thiếu tài liệu có thể ảnh hưởng đến thời gian hoàn thiện và nộp hồ sơ. Sau khi nhận đủ, IDC VIETNAM sẽ kiểm tra và gửi Quý khách Biên bản tiếp nhận hồ sơ cập nhật. Trân trọng cảm ơn sự hợp tác của Quý khách.</div>
-<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>Người xử lý hồ sơ · (Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${ed(handler)}</div></div></div>
+<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>Người xử lý hồ sơ · (Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${ed('','Bấm để nhập tên')}</div></div></div>
 <div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
 </body></html>`;
 }
