@@ -330,9 +330,10 @@ function vAdmin(){
   $('view').innerHTML=`
   <div class="phead"><div><div class="eyebrow">Quản trị</div><h1>Cấu hình portal</h1><p>Quản lý nhân viên được đăng nhập, danh mục tài liệu, các bước lộ trình và mức phí của chương trình L-1A → EB-1C.</p></div></div>
   <section class="card"><div class="card-h"><h3>Nhân viên</h3><span class="sp dnote">Tạo mật khẩu cho nhân viên trong Supabase → Authentication → Add user, rồi thêm email tại đây.</span></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Tên</th><th>Quyền</th><th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name||'')}</td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['staff','Nhân viên'],['viewer','Chỉ xem']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td><td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Tên</th><th>Quyền</th>${R.notify?'<th>Nhận thông báo</th><th>Zalo chat ID</th>':''}<th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name||'')}</td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['staff','Nhân viên'],['viewer','Chỉ xem']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td>${R.notify?`<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-staffnotify="${esc(u.email)}" ${u.notify!==false?'checked':''}>Nhận</label></td><td><input data-staffzalo="${esc(u.email)}" value="${esc(u.zalo_chat_id||'')}" placeholder="—" style="width:150px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Zalo chat ID của ${esc(u.email)}"></td>`:''}<td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
     <form id="staffform" class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border)"><input id="s-email" type="email" placeholder="email@congty.com" required style="flex:1 1 220px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><input id="s-name" placeholder="Tên hiển thị" style="flex:1 1 160px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><select id="s-role" style="border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><option value="staff">Nhân viên</option><option value="viewer">Chỉ xem</option><option value="admin">Quản trị</option></select><button class="btn primary" type="submit">${I('plus')}Thêm nhân viên</button></form>
   </section>
+  ${notifyCard()}
   <section class="card"><div class="card-h"><h3>Danh mục tài liệu</h3><div class="sp"><button class="btn sm" data-act="addDoc">${I('plus',14)}Thêm tài liệu</button></div></div>
     <div class="tbl-wrap"><table class="cfg"><thead><tr><th>Mã</th><th>Nhóm</th><th>Tên tài liệu</th><th>Tên tiếng Anh</th><th>Phân loại</th><th>Yêu cầu</th><th>Kỳ dữ liệu</th><th title="Chỉ áp dụng khi công ty Mỹ đang hoạt động (phương án B)">Chỉ PA B</th><th></th></tr></thead><tbody id="docrows">${DOCS.map((d,i)=>`<tr data-i="${i}"><td>${inp('code',d.code,'72px')}</td><td>${groupSel(d.group)}</td><td>${inp('name',d.name,'220px')}</td><td>${inp('en',d.en,'180px')}</td><td>${inp('cat',d.cat,'96px')}</td><td>${inp('note',d.note,'220px')}</td><td>${inp('period',d.period,'130px')}</td><td><input type="checkbox" data-k="op" ${d.op?'checked':''}></td><td><button class="icon-btn" data-docdel="${i}" aria-label="Xoá ${esc(d.code)}">${I('trash')}</button></td></tr>`).join('')}</tbody></table></div></section>
   <div class="two">
@@ -341,13 +342,34 @@ function vAdmin(){
   </div>
   <div style="display:flex;gap:8px"><button class="btn primary" data-act="saveProgram">${I('check')}Lưu cấu hình</button><button class="btn" data-act="exportExcel">${I('sheet')}Xuất toàn bộ dữ liệu (Excel)</button></div>`;
 }
+function notifyCard(){
+  const n=R.notify;
+  const head=`<div class="card-h"><h3>Thông báo tệp mới</h3><span class="sp dnote">Báo cho mọi người trên portal khi có tệp mới (5–8 phút) và tổng hợp lúc 17:00.</span></div>`;
+  if(!n)return `<section class="card">${head}<div class="card-b"><div class="banner warn">${I('alert')}<div>Chưa cài phần gửi thông báo trên Supabase. Làm theo hướng dẫn <b>HUONG_DAN_THONG_BAO.md</b> (chạy tệp <b>supabase/notify.sql</b>), sau đó tải lại trang.</div></div></div></section>`;
+  const on=R.staff.filter(u=>u.notify!==false),zl=on.filter(u=>u.zalo_chat_id);
+  const ta=(id,v,ph)=>`<textarea id="${id}" rows="2" placeholder="${ph}" style="width:100%">${esc((v||[]).join(', '))}</textarea>`;
+  const ck=(id,v,l)=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="${id}" ${v?'checked':''}>${l}</label>`;
+  return `<section class="card">${head}<div class="card-b" style="display:grid;gap:14px">
+    <div style="display:flex;gap:22px;flex-wrap:wrap;font-weight:600">${ck('n-on',n.enabled,'Bật thông báo')}${ck('n-email',n.email!==false,'Gửi qua email')}${ck('n-zalo',!!n.zalo,'Gửi thêm qua Zalo')}</div>
+    <div class="banner">${I('users')}<div>Đang nhận: <b>${on.length}</b> người trên portal (bật/tắt từng người ở cột <b>Nhận thông báo</b> của bảng Nhân viên)${n.zalo?`, trong đó <b>${zl.length}</b> người đã có Zalo chat ID`:''}. Người tự tải tệp lên không nhận thông báo về tệp của mình.</div></div>
+    <div class="two" style="gap:14px">
+      <div class="fld"><label for="n-instant">Email nhận thêm <span class="dnote">(người không có tài khoản portal)</span></label>${ta('n-instant',n.instant,'ví dụ: luatsu@lawfirm.com')}</div>
+      <div class="fld"><label for="n-digest">Nhận thư tổng hợp 17:00 <span class="dnote">(để trống = quản trị viên)</span></label>${ta('n-digest',n.digest,'ví dụ: sep@idcedu.vn, ketoan@idcedu.vn')}</div>
+    </div>
+    <div class="two" style="gap:14px">
+      <div class="fld"><label for="n-from">Email gửi từ</label><input id="n-from" value="${esc(n.from||'')}" style="width:100%"></div>
+      <div class="fld"><label for="n-groups">Chat ID nhóm Zalo <span class="dnote">(tuỳ chọn, nếu bot vào được nhóm)</span></label><input id="n-groups" value="${esc((n.zalo_groups||[]).join(', '))}" placeholder="—" style="width:100%"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="saveNotify">${I('check')}Lưu thông báo</button><button class="btn" data-act="testNotify">${I('mail')}Gửi thử cho tôi</button></div>
+  </div></section>`;
+}
 function readProgramForm(){
   const docs=[...document.querySelectorAll('#docrows tr')].map(tr=>{const g=k=>tr.querySelector(`[data-k="${k}"]`);return{code:g('code').value.trim().toUpperCase(),group:g('group').value,name:g('name').value.trim(),en:g('en').value.trim(),cat:g('cat').value.trim(),note:g('note').value.trim(),period:g('period').value.trim(),op:g('op').checked}}).filter(d=>d.code&&d.name);
   const steps=[...document.querySelectorAll('#steprows tr')].map(tr=>({t:tr.querySelector('[data-k="t"]').value.trim(),d:tr.querySelector('[data-k="d"]').value.trim()}));
   const pay=[...document.querySelectorAll('#payrows tr')].map(tr=>({k:tr.dataset.k,n:tr.querySelector('[data-k="n"]').value.trim(),w:tr.querySelector('[data-k="w"]').value.trim(),a:parseFloat(tr.querySelector('[data-k="a"]').value.replace(/[^\d.]/g,''))||0}));
   return{docs,steps,pay};
 }
-async function loadStaff(){const r=await R.sb.from('staff').select('*').order('email');R.staff=r.data||[];if(S.view==='admin')render()}
+async function loadStaff(){const r=await R.sb.from('staff').select('*').order('email');R.staff=r.data||[];const n=await R.sb.from('settings').select('value').eq('key','notify').maybeSingle();R.notify=n.data?n.data.value:null;if(S.view==='admin')render()}
 function vClients(){
   const q=S.q.trim().toLowerCase();
   const all=R.clients;
@@ -535,6 +557,8 @@ document.addEventListener('click',async e=>{
     case 'close':return closeDrawer();
     case 'logout':return logout();
     case 'addDoc':{const tb=$('docrows');const tr=tb.rows[tb.rows.length-1].cloneNode(true);tr.querySelectorAll('input').forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=''});tb.appendChild(tr);tr.querySelector('input').focus();return}
+    case 'saveNotify':{const list=id=>[...new Set($(id).value.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];const bad=[...list('n-instant'),...list('n-digest')].filter(e=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));if(bad.length){toast('Email không hợp lệ: '+bad.join(', '));return}const v=Object.assign({},R.notify,{enabled:$('n-on').checked,email:$('n-email').checked,zalo:$('n-zalo').checked,zalo_groups:$('n-groups').value.split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean),from:$('n-from').value.trim()||R.notify.from,instant:list('n-instant'),digest:list('n-digest')});const r=await R.sb.from('settings').upsert({key:'notify',value:v,updated_by:R.email});if(r.error){toast(dbErr(r.error));return}R.notify=v;toast(v.enabled?'Đã lưu · thông báo đang bật':'Đã lưu · thông báo đang tắt');render();return}
+    case 'testNotify':{const r=await R.sb.rpc('notify_test');if(r.error){toast('Chưa gửi được: '+r.error.message);return}toast('Đã gửi thử tới '+(r.data||R.email)+'. Kiểm tra email (cả mục Spam) và Zalo sau 1–2 phút.');return}
     case 'saveProgram':{const p=readProgramForm();const codes=p.docs.map(d=>d.code);if(new Set(codes).size!==codes.length){toast('Mã tài liệu bị trùng.');return}const r=await R.sb.from('settings').upsert({key:'program_l1a',value:p,updated_by:R.email});if(r.error){toast(dbErr(r.error));return}applyProgram(p);toast('Đã lưu cấu hình');render();return}
     case 'newClient':return openDrawer('client','new');
     case 'editClient':return openDrawer('client','edit');
@@ -550,7 +574,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();if((e.
 document.addEventListener('submit',async e=>{if(e.target.id==='cform')return submitClient(e);
   if(e.target.id==='loginform'){e.preventDefault();$('l-btn').disabled=true;$('l-err').textContent='';const err=await login($('l-email').value.trim(),$('l-pass').value);if(err){$('l-err').textContent=err;$('l-btn').disabled=false}return}
   if(e.target.id==='staffform'){e.preventDefault();const email=$('s-email').value.trim().toLowerCase();const r=await R.sb.from('staff').upsert({email,name:$('s-name').value.trim(),role:$('s-role').value});if(r.error)toast(dbErr(r.error));else{toast('Đã thêm '+email);loadStaff()}return}});
-document.addEventListener('change',async e=>{const el=e.target;if(el.dataset&&el.dataset.staffrole){const r=await R.sb.from('staff').update({role:el.value}).eq('email',el.dataset.staffrole);toast(r.error?dbErr(r.error):'Đã đổi quyền');}});
+document.addEventListener('change',async e=>{const el=e.target;if(!el.dataset)return;
+  if(el.dataset.staffrole){const r=await R.sb.from('staff').update({role:el.value}).eq('email',el.dataset.staffrole);toast(r.error?dbErr(r.error):'Đã đổi quyền');}
+  if(el.dataset.staffnotify){const r=await R.sb.from('staff').update({notify:el.checked}).eq('email',el.dataset.staffnotify);toast(r.error?dbErr(r.error):(el.checked?'Đã bật thông báo cho ':'Đã tắt thông báo cho ')+el.dataset.staffnotify);if(!r.error)loadStaff();}
+  if(el.dataset.staffzalo!==undefined&&el.dataset.staffzalo){const v=el.value.trim();const r=await R.sb.from('staff').update({zalo_chat_id:v||null}).eq('email',el.dataset.staffzalo);toast(r.error?dbErr(r.error):'Đã lưu Zalo chat ID');if(!r.error)loadStaff();}
+});
 document.addEventListener('change',async e=>{const el=e.target;if(el.dataset&&el.dataset.pay){const c=getC(S.client);const v=Math.max(0,parseFloat(String(el.value).replace(/[^\d.]/g,''))||0);const p=PAY.find(x=>x.k===el.dataset.pay);if(+((c.pay||{})[p.k]||0)!==v&&await updateClient(c,{pay:{[p.k]:v}},`${p.n}: đã thu ${usd(v)} USD`))toast('Đã lưu thanh toán '+p.n)}});
 ['dragover','dragenter'].forEach(ev=>document.addEventListener(ev,e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(z){e.preventDefault();z.classList.add('over')}}));
 document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(z)z.classList.remove('over')});

@@ -20,6 +20,16 @@
     // Đã nhận
     'Đã nhận': 'Received', 'Biên bản tiếp nhận': 'Receipt record', 'Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.': 'The browser blocked the new window. Allow pop-ups for this site.', 'Tài liệu đã nhận': 'Documents received', 'Ngày nhận': 'Received on', 'Chưa nhận tài liệu nào': 'No documents received yet',
     'Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.': 'Documents the client submits will appear here with the date received.',
+    // Thông báo email
+    'Thông báo tệp mới': 'New-file notifications', 'Bật thông báo': 'Enable notifications', 'Gửi qua email': 'Send by email', 'Gửi thêm qua Zalo': 'Also send via Zalo',
+    'Báo cho mọi người trên portal khi có tệp mới (5–8 phút) và tổng hợp lúc 17:00.': 'Alerts everyone on the portal about new files (within 5–8 minutes) plus a 17:00 summary.',
+    'Nhận thông báo': 'Notifications', 'Nhận': 'On', 'Email nhận thêm': 'Extra email recipients', '(người không có tài khoản portal)': '(people without a portal account)',
+    'Email gửi từ': 'Sender email', 'Chat ID nhóm Zalo': 'Zalo group chat ID', '(tuỳ chọn, nếu bot vào được nhóm)': '(optional, if the bot can join the group)', 'Gửi thử cho tôi': 'Send me a test',
+    'Đã lưu Zalo chat ID': 'Zalo chat ID saved',
+    'Thông báo email': 'Email notifications', 'Bật thông báo email': 'Enable email notifications', 'Lưu thông báo': 'Save notifications', 'Gửi thư thử cho tôi': 'Send me a test email',
+    'Báo chuyên viên khi có tệp mới (5–8 phút) và gửi thư tổng hợp lúc 17:00.': 'Alerts the case officer about new files (within 5–8 minutes) and sends a daily summary at 17:00.',
+    'Nhận ngay mọi tệp mới': 'Receive every new file immediately', '(ngoài chuyên viên phụ trách)': '(in addition to the case officer)',
+    'Nhận thư tổng hợp 17:00': 'Receive the 17:00 summary', '(để trống = quản trị viên)': '(empty = administrators)', 'Gửi từ': 'Sender',
     // Danh sách hồ sơ
     'Chương trình · L-1A → EB-1C': 'Program · L-1A → EB-1C',
     'Chọn một hồ sơ để xem những tài liệu còn thiếu, tải tệp lên, duyệt và tải hồ sơ về.': 'Open a case to see missing documents, upload files, review and download the case.',

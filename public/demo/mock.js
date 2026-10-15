@@ -83,10 +83,10 @@
     { t: c.created_at, by: 'admin@idcvietnam.vn', m: 'Tạo hồ sơ' }]; });
   const DB = {
     staff: [{ email: ME, name: 'Khách xem thử', role: 'admin', created_at: iso(30) },
-            { email: 'lananh@idcvietnam.vn', name: 'Lan Anh', role: 'staff', created_at: iso(30) },
+            { email: 'lananh@idcvietnam.vn', name: 'Lan Anh', role: 'staff', notify: true, zalo_chat_id: '7391020458831', created_at: iso(30) },
             { email: 'quanghuy@idcvietnam.vn', name: 'Quang Huy', role: 'staff', created_at: iso(30) },
             { email: 'bangiamdoc@idcvietnam.vn', name: 'Ban Giám đốc', role: 'viewer', created_at: iso(30) }],
-    clients, files, settings: []
+    clients, files, settings: [{ key: 'notify', value: { enabled: true, from: 'IDC VIETNAM <thongbao@ditruidc.com>', portal: 'https://hoso.ditruidc.com', instant: [], digest: ['bangiamdoc@idcvietnam.vn'], email: true, zalo: true, zalo_groups: [] } }]
   };
 
   /* ---- bộ truy vấn giả lập ---- */
@@ -144,6 +144,7 @@
     },
     from: t => Q(t),
     rpc: async (fn, a) => {
+      if (fn === 'notify_test') return { data: ME + ' (bản xem thử không gửi thư thật)', error: null };
       if (fn !== 'patch_client') return { error: { message: 'Không hỗ trợ' } };
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };
       c.data = merge(c.data, a.p_patch || {}); const t = new Date().toISOString(); c.updated_at = t;
