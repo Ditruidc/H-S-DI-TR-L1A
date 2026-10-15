@@ -64,19 +64,29 @@ language sql stable security definer set search_path = public as $$
    limit 1
 $$;
 
+-- tên tiếng Anh của tài liệu (cột "en" trong danh mục)
+create or replace function public.notify_doc_en(p_code text) returns text
+language sql stable security definer set search_path = public as $$
+  select d ->> 'en'
+    from public.settings s, jsonb_array_elements(coalesce(s.value -> 'docs', '[]'::jsonb)) d
+   where s.key = 'program_l1a' and d ->> 'code' = p_code
+   limit 1
+$$;
+
 -- khung thư chung (màu IDC)
 create or replace function public.notify_wrap(p_title text, p_body text, p_portal text) returns text
 language sql immutable as $$
   select '<div style="font-family:Arial,Helvetica,sans-serif;background:#F3F6F1;padding:24px 12px">'
       || '<div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #DCE8D7;border-radius:10px;overflow:hidden">'
       || '<div style="background:#1B6B1B;padding:14px 20px;color:#F5C400;font-weight:bold;letter-spacing:.06em">IDC VIETNAM'
-      || '<span style="color:#ffffff;font-weight:normal;letter-spacing:0"> · Portal hồ sơ định cư</span></div>'
+      || '<span style="color:#ffffff;font-weight:normal;letter-spacing:0"> · Portal hồ sơ định cư · Immigration Case Portal</span></div>'
       || '<div style="height:3px;background:#F5C400"></div>'
       || '<div style="padding:20px;color:#14201A;font-size:14px;line-height:1.55">'
       || '<h2 style="margin:0 0 12px;font-size:17px">' || p_title || '</h2>' || p_body
-      || '<p style="margin:20px 0 0"><a href="' || p_portal || '" style="display:inline-block;background:#1B6B1B;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:bold">Mở portal</a></p>'
+      || '<p style="margin:20px 0 0"><a href="' || p_portal || '" style="display:inline-block;background:#1B6B1B;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:bold">Mở portal · Open portal</a></p>'
       || '</div><div style="padding:12px 20px;border-top:1px solid #EEF3EC;color:#6B7A70;font-size:12px">'
-      || 'Thư tự động từ portal nội bộ. Tệp chỉ xem được sau khi đăng nhập. Vui lòng không trả lời thư này.'
+      || 'Thư tự động từ portal nội bộ. Tệp chỉ xem được sau khi đăng nhập. Vui lòng không trả lời thư này.<br>'
+      || 'Automated message from the internal portal. Files can only be viewed after signing in. Please do not reply.'
       || '</div></div></div>'
 $$;
 
@@ -182,25 +192,28 @@ begin
     if cardinality(rcpt) > 0 then
       select string_agg(
                '<tr><td style="padding:6px 8px;border-bottom:1px solid #EEF3EC;font-family:monospace">' || public.notify_html_escape(f.code) || '</td>'
-            || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC">' || public.notify_html_escape(coalesce(public.notify_doc_name(f.code), '')) || '<div style="color:#6B7A70;font-size:12px">' || public.notify_html_escape(f.name) || '</div></td>'
+            || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC">' || public.notify_html_escape(coalesce(public.notify_doc_name(f.code), ''))
+            || coalesce('<div style="color:#6B7A70;font-size:12px;font-style:italic">' || public.notify_html_escape(nullif(public.notify_doc_en(f.code), '')) || '</div>', '')
+            || '<div style="color:#6B7A70;font-size:12px">' || public.notify_html_escape(f.name) || '</div></td>'
             || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC;color:#6B7A70">' || public.notify_html_escape(coalesce(f.created_by,'')) || '</td></tr>',
                '' order by f.created_at)
         into trs from public.files f where f.id = any(c.ids);
 
       if coalesce((cfg ->> 'email')::boolean, true) then perform public.notify_send(
         rcpt,
-        c.client_id || ' · ' || coalesce(c.cname,'') || ' có ' || c.n || ' tệp mới chờ duyệt',
+        c.client_id || ' · ' || coalesce(c.cname,'') || ' · ' || c.n || ' tệp mới chờ duyệt / ' || c.n || ' new file(s) to review',
         public.notify_wrap(
           public.notify_html_escape(c.client_id) || ' · ' || public.notify_html_escape(coalesce(c.cname,'')),
-          '<p style="margin:0 0 12px">Hồ sơ vừa nhận <b>' || c.n || ' tệp mới</b>, đang ở trạng thái <b>Chờ duyệt</b>.</p>'
+          '<p style="margin:0 0 2px">Hồ sơ vừa nhận <b>' || c.n || ' tệp mới</b>, đang ở trạng thái <b>Chờ duyệt</b>.</p>'
+          || '<p style="margin:0 0 12px;color:#6B7A70">The case just received <b>' || c.n || ' new file(s)</b>, now <b>Pending review</b>.</p>'
           || '<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#E8F2E5;color:#1B6B1B;text-align:left">'
-          || '<th style="padding:6px 8px">Mã</th><th style="padding:6px 8px">Tài liệu</th><th style="padding:6px 8px">Người tải</th></tr>'
+          || '<th style="padding:6px 8px">Mã<br><span style="color:#6B7A70;font-weight:normal">Code</span></th><th style="padding:6px 8px">Tài liệu<br><span style="color:#6B7A70;font-weight:normal">Document</span></th><th style="padding:6px 8px">Người tải<br><span style="color:#6B7A70;font-weight:normal">Uploaded by</span></th></tr>'
           || trs || '</table>',
           portal || '/#' || c.client_id)); end if;
       perform public.notify_zalo_many(rcpt,
-        'IDC Portal · ' || c.client_id || ' · ' || coalesce(c.cname,'') || E'\n' || c.n || ' tệp mới chờ duyệt: '
+        'IDC Portal · ' || c.client_id || ' · ' || coalesce(c.cname,'') || E'\n' || c.n || ' tệp mới chờ duyệt / new file(s) to review: '
         || (select string_agg(distinct f.code, ', ') from public.files f where f.id = any(c.ids))
-        || E'\nMở hồ sơ: ' || portal || '/#' || c.client_id);
+        || E'\nMở hồ sơ / Open case: ' || portal || '/#' || c.client_id);
       sent := sent + 1;
     end if;
 
@@ -241,7 +254,7 @@ begin
     into npend, pend
     from (select cl.id, count(*) n,
                  '<li><a href="' || portal || '/#' || cl.id || '" style="color:#1B6B1B">' || public.notify_html_escape(cl.id) || '</a> · '
-              || public.notify_html_escape(coalesce(cl.data ->> 'name','')) || ': <b>' || count(*) || '</b> tài liệu</li>' line
+              || public.notify_html_escape(coalesce(cl.data ->> 'name','')) || ': <b>' || count(*) || '</b> tài liệu / document(s)</li>' line
             from public.clients cl, jsonb_each(coalesce(cl.data -> 'docs', '{}'::jsonb)) d
            where d.value ->> 's' = 'review'
            group by cl.id, cl.data) t;
@@ -249,20 +262,22 @@ begin
   if nfiles = 0 and npend = 0 then return 0; end if;   -- không có gì mới, không gửi
 
   perform public.notify_zalo_many(rcpt,
-    'IDC Portal · Tổng hợp ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') || E'\n'
-    || nfiles || ' tệp mới trong 24 giờ, ' || npend || ' tài liệu chờ duyệt.' || E'\nMở portal: ' || portal);
+    'IDC Portal · Tổng hợp / Daily summary ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') || E'\n'
+    || nfiles || ' tệp mới trong 24 giờ, ' || npend || ' tài liệu chờ duyệt.' || E'\n'
+    || nfiles || ' new file(s) in 24 hours, ' || npend || ' document(s) pending review.' || E'\nMở portal / Open portal: ' || portal);
   if coalesce((cfg ->> 'email')::boolean, true) is not true then return 1; end if;
   perform public.notify_send(
     rcpt,
-    'Tổng hợp hồ sơ ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') || ': ' || nfiles || ' tệp mới, ' || npend || ' tài liệu chờ duyệt',
+    'Tổng hợp hồ sơ / Daily summary ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') || ': ' || nfiles || ' tệp mới / new files, ' || npend || ' chờ duyệt / pending',
     public.notify_wrap(
-      'Tổng hợp ngày ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY'),
-      '<p style="margin:0 0 8px"><b>' || nfiles || '</b> tệp mới trong 24 giờ qua · <b>' || npend || '</b> tài liệu đang chờ duyệt.</p>'
+      'Tổng hợp ngày ' || to_char(now() at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY') || ' <span style="color:#6B7A70;font-weight:normal">· Daily summary</span>',
+      '<p style="margin:0 0 2px"><b>' || nfiles || '</b> tệp mới trong 24 giờ qua · <b>' || npend || '</b> tài liệu đang chờ duyệt.</p>'
+      || '<p style="margin:0 0 8px;color:#6B7A70"><b>' || nfiles || '</b> new file(s) in the last 24 hours · <b>' || npend || '</b> document(s) pending review.</p>'
       || case when newrows is not null then
            '<table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 14px"><tr style="background:#E8F2E5;color:#1B6B1B;text-align:left">'
-        || '<th style="padding:6px 8px">Hồ sơ</th><th style="padding:6px 8px">Khách hàng</th><th style="padding:6px 8px;text-align:right">Tệp</th><th style="padding:6px 8px">Tài liệu</th></tr>'
+        || '<th style="padding:6px 8px">Hồ sơ<br><span style="color:#6B7A70;font-weight:normal">Case</span></th><th style="padding:6px 8px">Khách hàng<br><span style="color:#6B7A70;font-weight:normal">Client</span></th><th style="padding:6px 8px;text-align:right">Tệp<br><span style="color:#6B7A70;font-weight:normal">Files</span></th><th style="padding:6px 8px">Tài liệu<br><span style="color:#6B7A70;font-weight:normal">Documents</span></th></tr>'
         || newrows || '</table>' else '' end
-      || case when pend is not null then '<p style="margin:8px 0 4px"><b>Đang chờ duyệt</b></p><ul style="margin:0;padding-left:18px">' || pend || '</ul>' else '' end,
+      || case when pend is not null then '<p style="margin:8px 0 4px"><b>Đang chờ duyệt</b> <span style="color:#6B7A70;font-weight:normal">· Pending review</span></p><ul style="margin:0;padding-left:18px">' || pend || '</ul>' else '' end,
       portal));
   return 1;
 end $$;
@@ -274,12 +289,13 @@ declare me text := lower(coalesce(auth.jwt() ->> 'email',''));
 begin
   if not public.is_admin() then raise exception 'Chỉ quản trị viên được gửi thư thử'; end if;
   if coalesce((public.notify_cfg() ->> 'zalo')::boolean, false) then
-    perform public.notify_zalo((select zalo_chat_id from public.staff where email = me), 'IDC Portal · Tin thử: thông báo Zalo đã hoạt động.');
+    perform public.notify_zalo((select zalo_chat_id from public.staff where email = me), 'IDC Portal · Tin thử: thông báo Zalo đã hoạt động. / Test: Zalo alerts are working.');
   end if;
   if coalesce((public.notify_cfg() ->> 'email')::boolean, true) is not true then return me; end if;
-  perform public.notify_send(array[me], 'Thư thử · Thông báo portal hồ sơ IDC VIETNAM',
-    public.notify_wrap('Cài đặt thông báo đã hoạt động',
-      '<p style="margin:0">Nếu bạn đọc được thư này, portal đã gửi email thành công. Từ giờ, khi có tệp mới tải lên, chuyên viên phụ trách sẽ nhận thư báo trong khoảng 5–8 phút.</p>',
+  perform public.notify_send(array[me], 'Thư thử · Test email · Thông báo portal hồ sơ IDC VIETNAM',
+    public.notify_wrap('Cài đặt thông báo đã hoạt động <span style="color:#6B7A70;font-weight:normal">· Notifications are working</span>',
+      '<p style="margin:0">Nếu bạn đọc được thư này, portal đã gửi email thành công. Từ giờ, khi có tệp mới tải lên, mọi người trên portal sẽ nhận thư báo trong khoảng 5–8 phút.</p>'
+      || '<p style="margin:8px 0 0;color:#6B7A70">If you can read this, the portal sent email successfully. From now on, when new files are uploaded, everyone on the portal will be notified within 5–8 minutes.</p>',
       coalesce(public.notify_cfg() ->> 'portal', 'https://hoso.ditruidc.com')));
   return me;
 end $$;
@@ -291,6 +307,7 @@ revoke all on function public.notify_digest()                from public, anon, 
 revoke all on function public.notify_zalo(text, text)          from public, anon, authenticated;
 revoke all on function public.notify_zalo_many(text[], text, boolean) from public, anon, authenticated;
 revoke all on function public.notify_admins()                from public, anon, authenticated;
+revoke all on function public.notify_doc_en(text)               from public, anon, authenticated;
 revoke all on function public.notify_cfg()                   from public, anon, authenticated;
 revoke all on function public.notify_test()                  from public, anon;
 grant execute on function public.notify_test() to authenticated;
