@@ -173,7 +173,7 @@ begin
 
   for c in
     select f.client_id,
-           cl.data ->> 'name'  as cname,
+           concat_ws(' – ', nullif(cl.data ->> 'name',''), nullif(cl.data ->> 'company','')) as cname,
            cl.data ->> 'staff' as staff_name,
            array_agg(f.id order by f.created_at)                     as ids,
            count(*)                                                  as n,
@@ -242,7 +242,7 @@ begin
     into nfiles, newrows
     from (select f.client_id cid, count(*) n,
                  '<tr><td style="padding:6px 8px;border-bottom:1px solid #EEF3EC;font-family:monospace"><a href="' || portal || '/#' || f.client_id || '" style="color:#1B6B1B">' || public.notify_html_escape(f.client_id) || '</a></td>'
-              || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC">' || public.notify_html_escape(coalesce(cl.data ->> 'name','')) || '</td>'
+              || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC">' || public.notify_html_escape(coalesce(cl.data ->> 'name','')) || coalesce('<div style="color:#6B7A70;font-size:12px">' || public.notify_html_escape(nullif(cl.data ->> 'company','')) || '</div>', '') || '</td>'
               || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC;text-align:right">' || count(*) || '</td>'
               || '<td style="padding:6px 8px;border-bottom:1px solid #EEF3EC;font-family:monospace;color:#6B7A70">' || public.notify_html_escape(string_agg(distinct f.code, ', ')) || '</td></tr>' line
             from public.files f join public.clients cl on cl.id = f.client_id
@@ -254,7 +254,7 @@ begin
     into npend, pend
     from (select cl.id, count(*) n,
                  '<li><a href="' || portal || '/#' || cl.id || '" style="color:#1B6B1B">' || public.notify_html_escape(cl.id) || '</a> · '
-              || public.notify_html_escape(coalesce(cl.data ->> 'name','')) || ': <b>' || count(*) || '</b> tài liệu / document(s)</li>' line
+              || public.notify_html_escape(concat_ws(' – ', nullif(cl.data ->> 'name',''), nullif(cl.data ->> 'company',''))) || ': <b>' || count(*) || '</b> tài liệu / document(s)</li>' line
             from public.clients cl, jsonb_each(coalesce(cl.data -> 'docs', '{}'::jsonb)) d
            where d.value ->> 's' = 'review'
            group by cl.id, cl.data) t;

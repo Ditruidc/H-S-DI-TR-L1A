@@ -100,7 +100,7 @@ async function afterAuth(){
   R.email=(R.session.user.email||'').toLowerCase();R.ready=false;render();
   const me=await R.sb.from('staff').select('email,role,name').eq('email',R.email).maybeSingle();
   if(me.error||!me.data){R.role=null;R.canWrite=false;R.ready=true;R.err=me.error?{message:me.error.message}:{code:'not_staff'};render();return}
-  R.role=me.data.role;R.isAdmin=me.data.role==='admin';R.canWrite=me.data.role!=='viewer';R.err=null;
+  R.role=me.data.role;R.name=me.data.name||'';R.isAdmin=me.data.role==='admin';R.canWrite=me.data.role!=='viewer';R.err=null;
   const st=await R.sb.from('settings').select('value').eq('key','program_l1a').maybeSingle();
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadClients();
@@ -361,10 +361,12 @@ function noticeHTML(c){
   const s=stats(c),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   let i=0;
   const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')}).join('');
-  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
+  const handler=R.name||c.staff||'';
+  const ed=v=>`<span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa">${esc(v)}</span>`;
+  const info=[['Mã hồ sơ',esc(c.id)],['Đương đơn',esc(c.name||'—')],['Công ty',esc(c.company||'—')],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',esc(c.office||'IDC VIETNAM')],['Chuyên viên tư vấn',esc(c.staff||'—')],['Bộ phận tiếp nhận',ed('Phòng Hồ sơ Di trú')],['Người xử lý hồ sơ',ed(handler||'—')],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
   const city=(c.office&&!/idc/i.test(c.office))?c.office:'TP.HCM';
   return docHead(`Thông báo bổ sung ${c.id}`,no).replace('<div id="doc"','<div id="doc" class="tbdoc"')+`<span class="badge wt">! CẦN BỔ SUNG TÀI LIỆU</span><h1>THÔNG BÁO YÊU CẦU BỔ SUNG HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
-<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
+<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${v}</dd></div>`).join('')}</dl>
 <div class="lt"><p>Kính gửi: Ông/Bà <b>${esc(c.name||'')}</b>${c.company?' – '+esc(c.company):''}</p>
 <p>IDC VIETNAM trân trọng cảm ơn Quý khách đã tin tưởng đồng hành cùng chúng tôi trong chương trình L-1A → EB-1C. Tính đến ngày ${today}, IDC VIETNAM đã tiếp nhận <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc của hồ sơ <b>${esc(c.id)}</b>.</p>
 ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ sơ, IDC VIETNAM kính đề nghị Quý khách bổ sung <b>${miss.length} tài liệu</b> dưới đây trước ngày <span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa hạn nộp">${dd(due)}</span>.</p></div>
@@ -373,12 +375,12 @@ ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ s�
 <h2>${miss.length?'II. ':''}Hướng dẫn gửi tài liệu</h2>
 <div class="lt"><ul>
 <li>Gửi <b>bản scan màu, rõ nét, đủ tất cả các trang</b> (PDF hoặc ảnh JPG/PNG); mỗi tài liệu một tệp, tên tệp ghi kèm mã tài liệu (ví dụ: <i>VN-01_Giay-phep-kinh-doanh.pdf</i>).</li>
-<li>Gửi trực tiếp cho chuyên viên phụ trách${c.staff?` <b>${esc(c.staff)}</b>`:''} qua email hoặc Zalo.</li>
+<li>Gửi cho người xử lý hồ sơ${handler?` <b>${esc(handler)}</b>`:''} (Phòng Hồ sơ Di trú) hoặc chuyên viên tư vấn${c.staff?` <b>${esc(c.staff)}</b>`:''} qua email hoặc Zalo.</li>
 <li>Bản gốc hoặc bản sao công chứng chỉ cần gửi khi IDC VIETNAM có yêu cầu riêng.</li>
 <li>Trường hợp không có tài liệu hoặc tài liệu khác mẫu yêu cầu, Quý khách vui lòng liên hệ chuyên viên để được hướng dẫn phương án thay thế.</li>
 </ul></div>
 <div class="note">Việc bổ sung chậm hoặc thiếu tài liệu có thể ảnh hưởng đến thời gian hoàn thiện và nộp hồ sơ. Sau khi nhận đủ, IDC VIETNAM sẽ kiểm tra và gửi Quý khách Biên bản tiếp nhận hồ sơ cập nhật. Trân trọng cảm ơn sự hợp tác của Quý khách.</div>
-<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>(Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${esc(c.staff||'')}</div></div></div>
+<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>Người xử lý hồ sơ · (Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${ed(handler)}</div></div></div>
 <div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
 </body></html>`;
 }
