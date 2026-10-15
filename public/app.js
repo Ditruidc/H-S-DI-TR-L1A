@@ -100,7 +100,7 @@ async function afterAuth(){
   R.email=(R.session.user.email||'').toLowerCase();R.ready=false;render();
   const me=await R.sb.from('staff').select('email,role,name').eq('email',R.email).maybeSingle();
   if(me.error||!me.data){R.role=null;R.canWrite=false;R.ready=true;R.err=me.error?{message:me.error.message}:{code:'not_staff'};render();return}
-  R.role=me.data.role;R.name=me.data.name||'';R.isAdmin=me.data.role==='admin';R.canWrite=me.data.role!=='viewer';R.err=null;
+  R.role=me.data.role;R.name=me.data.name||'';R.isAdmin=me.data.role==='admin';R.canWrite=me.data.role==='admin'||me.data.role==='staff';R.canReview=R.canWrite||me.data.role==='lawyer';R.canApprove=R.isAdmin||me.data.role==='lawyer';R.err=null;
   const st=await R.sb.from('settings').select('value').eq('key','program_l1a').maybeSingle();
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadClients();
@@ -228,20 +228,21 @@ const whoHTML=e=>e?`<span>${esc(String(e).split('@')[0])}</span>`:'—';
 
 /* ---------- writes ---------- */
 function dbErr(e){const m=(e&&e.message)||'';if(/row-level security|permission/i.test(m))return'Bạn không có quyền sửa dữ liệu này.';return'Chưa lưu được: '+(m||'lỗi không rõ')+'. Thử lại.'}
-async function updateClient(c,patch,logMsg){
-  if(!R.canWrite){toast('Bạn đang ở chế độ chỉ xem.');return false}
+async function updateClient(c,patch,logMsg,review){
+  if(!(review?R.canReview:R.canWrite)){toast(review?'Bạn đang ở chế độ chỉ xem.':'Chỉ Quản trị hoặc Nhân viên được sửa thông tin hồ sơ.');return false}
   const r=await R.sb.rpc('patch_client',{p_id:c.id,p_patch:patch||{},p_log:logMsg||null});
   if(r.error){toast(dbErr(r.error));return false}
   await loadClients();return true;
 }
 async function setStatus(c,code,s,note){
   const cur=(c.docs||{})[code]||{};
-  const ok=await updateClient(c,{docs:{[code]:{s,note:note!==undefined?note:(cur.note||''),at:new Date().toISOString(),by:R.email}}},`${code} → ${ST[s][0]}${note?': '+note:''}`);
+  if((s==='approved'||cur.s==='approved')&&s!==cur.s&&!R.canApprove){toast('Chỉ Luật sư hoặc Quản trị được duyệt / bỏ duyệt tài liệu.');return}
+  const ok=await updateClient(c,{docs:{[code]:{s,note:note!==undefined?note:(cur.note||''),at:new Date().toISOString(),by:R.email}}},`${code} → ${ST[s][0]}${note?': '+note:''}`,true);
   if(ok)toast(`${code}: ${ST[s][0]}`);
 }
 async function saveNote(c,code,note){
   const cur=(c.docs||{})[code]||{};
-  if(await updateClient(c,{docs:{[code]:{s:cur.s||'missing',note,at:new Date().toISOString(),by:R.email}}},`${code}: cập nhật ghi chú`))toast('Đã lưu ghi chú');
+  if(await updateClient(c,{docs:{[code]:{s:cur.s||'missing',note,at:new Date().toISOString(),by:R.email}}},`${code}: cập nhật ghi chú`,true))toast('Đã lưu ghi chú');
 }
 const UP={};
 const safeName=n=>slug(n.replace(/\.[^.]+$/,'')).slice(0,80)+'.'+(n.split('.').pop()||'pdf').toLowerCase();
@@ -305,6 +306,13 @@ async function zipCase(c){
 const csvCell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
 
 /* ---------- biên bản tiếp nhận hồ sơ (in / lưu PDF) ---------- */
+/* khung thông tin dùng chung cho biên bản tiếp nhận và thông báo bổ sung */
+const docEd=(v,ph)=>`<span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa"${ph?` data-ph="${esc(ph)}"`:''}>${esc(v)}</span>`;
+function docInfo(c,today){
+  const s=stats(c),step=c.step||1;
+  const rows=[['Mã hồ sơ',esc(c.id)],['Đương đơn',esc(c.name||'—')],['Công ty',esc(c.company||'—')],['Mã số doanh nghiệp',esc(c.mst||'—')],['Chương trình','L-1A → EB-1C'],['Văn phòng','IDC VIETNAM'],['Chuyên viên tư vấn',esc(c.staff||'—')],['Bộ phận tiếp nhận',docEd('Phòng Hồ sơ Di trú')],['Người xử lý hồ sơ',docEd('','Bấm để nhập tên')],['Bước hiện tại',`${step}/5 · ${esc(STEPS[step-1].t)}`],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
+  return `<dl class="info">${rows.map(([k,v])=>`<div><dt>${k}:</dt><dd>${v}</dd></div>`).join('')}</dl>`;
+}
 /* phần đầu chung cho văn bản in (biên bản, thông báo bổ sung) */
 function docHead(title,no){
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${esc(title)}</title>
@@ -341,9 +349,8 @@ function receiptHTML(c){
   let i=0;
   const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')}).join('');
   const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
-  const info=[['Mã hồ sơ',c.id],['Đương đơn',c.name],['Công ty',c.company],['Chương trình','L-1A → EB-1C'],['Văn phòng tiếp nhận',c.office||'IDC VIETNAM'],['Chuyên viên phụ trách',c.staff],['Bước hiện tại',`${c.step||1}/5 · ${STEPS[(c.step||1)-1].t}`],['Ngày lập',today]];
   return docHead(`Biên bản tiếp nhận ${c.id}`,no)+`<span class="badge ok">✓ XÁC NHẬN ĐÃ TIẾP NHẬN</span><h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
-<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>
+${docInfo(c,today)}
 <h2>I. Tài liệu IDC VIETNAM đã nhận <span>${s.rcv}/${s.req} tài liệu bắt buộc · ${s.approved} đã kiểm tra, ${s.review} đang kiểm tra</span></h2>
 ${got.length?`<table><thead><tr><th class="c" style="width:9mm">STT</th><th style="width:17mm">Mã</th><th>Tên tài liệu</th><th class="c" style="width:14mm">Số tệp</th><th class="c" style="width:23mm">Ngày nhận</th><th class="c" style="width:27mm">Tình trạng</th></tr></thead><tbody>${rows}</tbody></table>`:'<p>Chưa có tài liệu nào được tiếp nhận.</p>'}
 ${miss.length?`<h2>II. Tài liệu cần bổ sung <span>${miss.length} tài liệu</span></h2><ul class="miss">${missList}</ul>`:`<h2>II. Tài liệu cần bổ sung <span>Không còn</span></h2><p>Khách hàng đã nộp đủ tài liệu bắt buộc.</p>`}
@@ -361,12 +368,9 @@ function noticeHTML(c){
   const s=stats(c),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   let i=0;
   const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')}).join('');
-  const handler='';
-  const ed=(v,ph)=>`<span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa"${ph?` data-ph="${esc(ph)}"`:''}>${esc(v)}</span>`;
-  const info=[['Mã hồ sơ',esc(c.id)],['Đương đơn',esc(c.name||'—')],['Công ty',esc(c.company||'—')],['Chương trình','L-1A → EB-1C'],['Văn phòng phụ trách',esc(c.office||'IDC VIETNAM')],['Chuyên viên tư vấn',esc(c.staff||'—')],['Bộ phận tiếp nhận',ed('Phòng Hồ sơ Di trú')],['Người xử lý hồ sơ',ed('','Bấm để nhập tên')],['Tài liệu đã nhận',`${s.rcv}/${s.req} tài liệu bắt buộc`],['Ngày lập',today]];
-  const city=(c.office&&!/idc/i.test(c.office))?c.office:'TP.HCM';
+  const city='TP.HCM';
   return docHead(`Thông báo bổ sung ${c.id}`,no).replace('<div id="doc"','<div id="doc" class="tbdoc"')+`<span class="badge wt">! CẦN BỔ SUNG TÀI LIỆU</span><h1>THÔNG BÁO YÊU CẦU BỔ SUNG HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
-<dl class="info">${info.map(([k,v])=>`<div><dt>${k}:</dt><dd>${v}</dd></div>`).join('')}</dl>
+${docInfo(c,today)}
 <div class="lt"><p>Kính gửi: Ông/Bà <b>${esc(c.name||'')}</b>${c.company?' – '+esc(c.company):''}</p>
 <p>IDC VIETNAM trân trọng cảm ơn Quý khách đã tin tưởng đồng hành cùng chúng tôi trong chương trình L-1A → EB-1C. Tính đến ngày ${today}, IDC VIETNAM đã tiếp nhận <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc của hồ sơ <b>${esc(c.id)}</b>.</p>
 ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ sơ, IDC VIETNAM kính đề nghị Quý khách bổ sung <b>${miss.length} tài liệu</b> dưới đây trước ngày <span class="ed" contenteditable="true" spellcheck="false" title="Bấm để sửa hạn nộp">${dd(due)}</span>.</p></div>
@@ -380,7 +384,7 @@ ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ s�
 <li>Trường hợp không có tài liệu hoặc tài liệu khác mẫu yêu cầu, Quý khách vui lòng liên hệ chuyên viên để được hướng dẫn phương án thay thế.</li>
 </ul></div>
 <div class="note">Việc bổ sung chậm hoặc thiếu tài liệu có thể ảnh hưởng đến thời gian hoàn thiện và nộp hồ sơ. Sau khi nhận đủ, IDC VIETNAM sẽ kiểm tra và gửi Quý khách Biên bản tiếp nhận hồ sơ cập nhật. Trân trọng cảm ơn sự hợp tác của Quý khách.</div>
-<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>Người xử lý hồ sơ · (Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${ed('','Bấm để nhập tên')}</div></div></div>
+<div class="sig one"><div></div><div><span style="font-style:normal;color:#14201A">${esc(city)}, ngày ${p(now.getDate())} tháng ${p(now.getMonth()+1)} năm ${now.getFullYear()}</span><b style="margin-top:1.4mm">ĐẠI DIỆN IDC VIETNAM</b><span>Người xử lý hồ sơ · (Ký và ghi rõ họ tên)</span><div class="ln"></div><div class="nm">${docEd('','Bấm để nhập tên')}</div></div></div>
 <div class="ft"><span><b>IDC VIETNAM</b> · 222 Nguyễn Đình Chính, P. Phú Nhuận, TP.HCM · Hotline 0934 198 818 – 0903 375 111</span><span>www.ditruidc.com · ${no}</span></div></div>
 </body></html>`;
 }
@@ -393,7 +397,7 @@ async function exportExcel(){
   const ck=[['Mã HS','Mã TL','Tài liệu','Nhóm','Trạng thái','Ghi chú','Số tệp','Cập nhật']];
   const tt=[['Mã HS','Đợt','Thời điểm','Số tiền (USD)','Đã thu (USD)']];
   R.clients.forEach(c=>{const s=stats(c);
-    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,c.office,c.opt,c.step,c.staff,c.opened,c.deps,c.us,c.state,c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.rcv,s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
+    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,'IDC VIETNAM',c.opt,c.step,c.staff,c.opened,c.deps,c.us,c.state,c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.rcv,s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
     DOCS.forEach(d=>{const x=(c.docs||{})[d.code]||{};ck.push([c.id,d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],x.note||'',(R.files[c.id]||[]).filter(f=>f.code===d.code).length||'',fmtTime(x.at)])});
     PAY.forEach(p=>tt.push([c.id,p.n,p.w,p.a,+((c.pay||{})[p.k])||0]));
   });
@@ -418,7 +422,7 @@ Lưu ý khi gửi:
   • Tất cả tài liệu cần bản dịch tiếng Anh kèm bản gốc.
   • Bản scan thẳng, rõ nét, định dạng PDF; đặt tên theo mã tài liệu (ví dụ ${c.id}_VN-01_Giay-phep-kinh-doanh.pdf).
 
-Nếu cần hỗ trợ, Anh/Chị liên hệ chuyên viên ${c.staff||'phụ trách'} – văn phòng ${c.office||'IDC VIETNAM'}.
+Nếu cần hỗ trợ, Anh/Chị liên hệ chuyên viên ${c.staff||'phụ trách'} – văn phòng IDC VIETNAM.
 
 Trân trọng,
 ${c.staff||'IDC VIETNAM'}
@@ -431,7 +435,7 @@ function navs(){
   $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:''):'';
   $('nav-prog').innerHTML=`<button data-go="clients" aria-current="false">${I('folder')}L-1A → EB-1C<span class="ct">${logged?n:''}</span></button>`+['EB-5','E-2','Du học Mỹ'].map(p=>`<button disabled>${I('folder')}${p}<span class="soon">Sắp có</span></button>`).join('');
   $('nav-mobile').innerHTML=`<div class="logo">IDC</div>`+(logged?`<button class="chip" data-go="clients" aria-pressed="${S.view!=='admin'}">Hồ sơ</button>${R.isAdmin?`<button class="chip" data-go="admin" aria-pressed="${S.view==='admin'}">Quản trị</button>`:''}<button class="chip" data-act="logout">Đăng xuất</button>`:'');
-  $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><button class="btn sm" data-act="logout" style="margin-top:6px">Đăng xuất</button>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
+  $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.role==='lawyer'?'Luật sư · xem & duyệt tài liệu':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><button class="btn sm" data-act="logout" style="margin-top:6px">Đăng xuất</button>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
 }
 function crumbs(){
   const c=S.client&&getC(S.client);
@@ -462,8 +466,8 @@ function vAdmin(){
   $('view').innerHTML=`
   <div class="phead"><div><div class="eyebrow">Quản trị</div><h1>Cấu hình portal</h1><p>Quản lý nhân viên được đăng nhập, danh mục tài liệu, các bước lộ trình và mức phí của chương trình L-1A → EB-1C.</p></div></div>
   <section class="card"><div class="card-h"><h3>Nhân viên</h3><span class="sp dnote">Tạo mật khẩu cho nhân viên trong Supabase → Authentication → Add user, rồi thêm email tại đây.</span></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Tên</th><th>Quyền</th>${R.notify?'<th>Nhận thông báo</th><th>Zalo chat ID</th>':''}<th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name||'')}</td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['staff','Nhân viên'],['viewer','Chỉ xem']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td>${R.notify?`<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-staffnotify="${esc(u.email)}" ${u.notify!==false?'checked':''}>Nhận</label></td><td><input data-staffzalo="${esc(u.email)}" value="${esc(u.zalo_chat_id||'')}" placeholder="—" style="width:150px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Zalo chat ID của ${esc(u.email)}"></td>`:''}<td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
-    <form id="staffform" class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border)"><input id="s-email" type="email" placeholder="email@congty.com" required style="flex:1 1 220px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><input id="s-name" placeholder="Tên hiển thị" style="flex:1 1 160px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><select id="s-role" style="border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><option value="staff">Nhân viên</option><option value="viewer">Chỉ xem</option><option value="admin">Quản trị</option></select><button class="btn primary" type="submit">${I('plus')}Thêm nhân viên</button></form>
+    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Tên</th><th>Quyền</th>${R.notify?'<th>Nhận thông báo</th><th>Zalo chat ID</th>':''}<th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name||'')}</td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['lawyer','Luật sư'],['staff','Nhân viên']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td>${R.notify?`<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-staffnotify="${esc(u.email)}" ${u.notify!==false?'checked':''}>Nhận</label></td><td><input data-staffzalo="${esc(u.email)}" value="${esc(u.zalo_chat_id||'')}" placeholder="—" style="width:150px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Zalo chat ID của ${esc(u.email)}"></td>`:''}<td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
+    <form id="staffform" class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border)"><input id="s-email" type="email" placeholder="email@congty.com" required style="flex:1 1 220px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><input id="s-name" placeholder="Tên hiển thị" style="flex:1 1 160px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><select id="s-role" style="border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><option value="staff">Nhân viên</option><option value="lawyer">Luật sư</option><option value="admin">Quản trị</option></select><button class="btn primary" type="submit">${I('plus')}Thêm nhân viên</button></form>
   </section>
   ${notifyCard()}
   <section class="card"><div class="card-h"><h3>Danh mục tài liệu</h3><div class="sp"><button class="btn sm" data-act="addDoc">${I('plus',14)}Thêm tài liệu</button></div></div>
@@ -529,7 +533,7 @@ function vClients(){
         <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
         <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
         <td class="r num">${s.review||'—'}</td>
-        <td>${esc(c.staff||'—')}<div class="dnote">${esc(c.office||'')}</div></td>
+        <td>${esc(c.staff||'—')}</td>
         <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
     </table></div>
   </section>`:vEmpty()}`;
@@ -547,8 +551,8 @@ function docCard(c,d,mode){
     ${x.note?`<div class="note">${esc(x.note)}</div>`:''}
     ${fs.length?`<div class="files">${fs.map(f=>`<div class="frow"><button class="fchip" data-view="${f._id}">${I('file',14)}<span>${esc(f.name)}</span><em>${fmtSize(f.size)}</em></button>${R.canWrite?`<button class="icon-btn fdel" data-del="${f._id}" title="Xoá tệp" aria-label="Xoá ${esc(f.name)}">${I('trash')}</button>`:''}</div>`).join('')}</div>`:''}
     ${mode==='missing'?`<div class="drop ${busy?'busy':''} ${canUp?'':'locked'}" ${canUp?`data-drop="${d.code}" tabindex="0" role="button"`:''} aria-label="Tải tệp cho ${d.code}">${busy?`${I('clock')}Đang tải lên…`:canUp?`${I('up')}Kéo tệp vào đây hoặc <b>bấm để chọn</b> · PDF, JPG, PNG · tối đa 50 MB`:`${I('alert')}Cần quyền chỉnh sửa để tải lên`}</div>`:''}
-    ${mode==='review'&&R.canWrite?`<div class="foot"><button class="btn sm ok" data-setst="approved" data-code="${d.code}">${I('check',14)}Duyệt</button><button class="btn sm" data-ask="${d.code}">${I('undo',14)}Yêu cầu bổ sung</button>${canUp?`<button class="btn sm ghost" data-pick="${d.code}">${I('plus',14)}Thêm tệp</button>`:''}</div>`:''}
-    ${mode==='approved'&&R.canWrite?`<div class="foot"><span class="dnote">Duyệt ${fmtTime(x.at)}</span><button class="btn sm ghost" data-setst="review" data-code="${d.code}" style="margin-left:auto">${I('undo',14)}Bỏ duyệt</button></div>`:''}
+    ${mode==='review'&&R.canReview?`<div class="foot">${R.canApprove?`<button class="btn sm ok" data-setst="approved" data-code="${d.code}">${I('check',14)}Duyệt</button>`:'<span class="dnote">Chờ Luật sư duyệt</span>'}<button class="btn sm" data-ask="${d.code}">${I('undo',14)}Yêu cầu bổ sung</button>${canUp?`<button class="btn sm ghost" data-pick="${d.code}">${I('plus',14)}Thêm tệp</button>`:''}</div>`:''}
+    ${mode==='approved'&&R.canReview?`<div class="foot"><span class="dnote">Duyệt ${fmtTime(x.at)}${x.by?' · '+esc(String(x.by).split('@')[0]):''}</span>${R.canApprove?`<button class="btn sm ghost" data-setst="review" data-code="${d.code}" style="margin-left:auto">${I('undo',14)}Bỏ duyệt</button>`:''}</div>`:''}
   </article>`;
 }
 function groupedCards(c,codes,mode){
@@ -567,7 +571,7 @@ function vCase(){
   else if(S.tab==='approved'){const l=by('approved');body=l.length?groupedCards(c,l,'approved'):`<div class="empty"><b>Chưa có tài liệu nào được duyệt</b></div>`}
   else if(S.tab==='all'){body=`<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th>Tệp</th><th>Ghi chú</th><th>Cập nhật</th><th></th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g&&m(d));if(!ds.length)return'';return `<tr class="grp"><td colspan="7">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const x=(c.docs||{})[d.code]||{},st=stOf(c,d.code),n=filesOf(c,d.code).length;return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="num">${n?`${I('file',13)} ${n}`:'—'}</td><td class="dnote" style="max-width:240px">${esc(x.note||'')}</td><td class="dnote">${fmtTime(x.at)}</td><td class="r"><button class="btn sm ghost" data-doc="${d.code}">Mở</button></td></tr>`}).join('')}).join('')}</tbody></table></div>`}
   else if(S.tab==='info'){
-    const info=[['Đương đơn',c.name],['Công ty Việt Nam',c.company],['Tên tiếng Anh',c.companyEn],['Mã số doanh nghiệp',c.mst],['Vốn điều lệ',c.charter],['Đăng ký doanh nghiệp',c.reg],['Chủ sở hữu / thành viên',c.owners],['Trụ sở',c.addr],['Ngành',c.industry],['Phương án',optLabel(c.opt)],['Pháp nhân tại Mỹ',[c.us,c.state].filter(Boolean).join(' · ')],['Người phụ thuộc',c.deps],['Văn phòng',c.office],['Chuyên viên',c.staff],['Ngày mở hồ sơ',c.opened]];
+    const info=[['Đương đơn',c.name],['Công ty Việt Nam',c.company],['Tên tiếng Anh',c.companyEn],['Mã số doanh nghiệp',c.mst],['Vốn điều lệ',c.charter],['Đăng ký doanh nghiệp',c.reg],['Chủ sở hữu / thành viên',c.owners],['Trụ sở',c.addr],['Ngành',c.industry],['Phương án',optLabel(c.opt)],['Pháp nhân tại Mỹ',[c.us,c.state].filter(Boolean).join(' · ')],['Người phụ thuộc',c.deps],['Văn phòng','IDC VIETNAM'],['Chuyên viên',c.staff],['Ngày mở hồ sơ',c.opened]];
     let acc=0;
     body=`<div class="two" style="padding:18px">
       <div class="card"><div class="card-h"><h3>Thông tin hồ sơ</h3>${R.canWrite?`<div class="sp"><button class="btn sm" data-act="editClient">${I('edit',14)}Sửa</button></div>`:''}</div><div class="card-b"><dl class="info" style="margin:0">${info.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>${c.note?`<div class="banner warn" style="margin-top:16px">${I('alert')}<div>${esc(c.note)}</div></div>`:''}</div></div>
@@ -583,7 +587,7 @@ function vCase(){
   <section class="card">
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
-        <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>${esc(c.office||'—')}</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
+        <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>IDC VIETNAM</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
@@ -610,10 +614,10 @@ function drawRender(soft){
     const noteVal=soft&&$('dr-note')?$('dr-note').value:(x.note||'');
     body.innerHTML=`
       <div class="box"><h4>Yêu cầu</h4><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div><div class="req" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${[d.cat,d.period,d.note].filter(Boolean).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}<span class="tag">Bản dịch tiếng Anh kèm bản gốc</span></div></div>
-      <div class="box"><h4>Trạng thái</h4><div class="seg" role="group" aria-label="Trạng thái">${Object.keys(ST).map(k=>`<button class="${k}" data-setst="${k}" data-code="${d.code}" aria-pressed="${st===k}" ${R.canWrite?'':'disabled'}>${ST[k][0]}</button>`).join('')}</div>${x.at?`<div class="dnote" style="margin-top:8px">Cập nhật ${fmtTime(x.at)} · ${whoHTML(x.by)}</div>`:''}</div>
+      <div class="box"><h4>Trạng thái</h4><div class="seg" role="group" aria-label="Trạng thái">${Object.keys(ST).map(k=>`<button class="${k}" data-setst="${k}" data-code="${d.code}" aria-pressed="${st===k}" ${R.canReview&&(R.canApprove||(k!=='approved'&&st!=='approved'))?'':'disabled'}>${ST[k][0]}</button>`).join('')}</div>${x.at?`<div class="dnote" style="margin-top:8px">Cập nhật ${fmtTime(x.at)} · ${whoHTML(x.by)}</div>`:''}</div>
       <div class="box"><h4>Tệp đã nộp (${fs.length})</h4><div class="files" style="padding:0">${fs.length?fs.map(f=>`<div style="display:flex;gap:6px;align-items:center"><button class="fchip" data-view="${f._id}">${I('file',14)}<span>${esc(f.name)}</span><em>${fmtSize(f.size)}${f.at?' · '+fmtTime(f.at):''}</em></button><button class="icon-btn" data-dlf="${f._id}" title="Tải xuống" aria-label="Tải ${esc(f.name)}">${I('down')}</button>${R.canWrite?`<button class="icon-btn" data-del="${f._id}" title="Xoá tệp" aria-label="Xoá ${esc(f.name)}">${I('trash')}</button>`:''}</div>`).join(''):'<span class="dnote">Chưa có tệp.</span>'}</div>
         ${canUp?`<div class="drop ${UP[d.code]?'busy':''}" data-drop="${d.code}" tabindex="0" role="button" style="margin:12px 0 0">${UP[d.code]?`${I('clock')}Đang tải lên…`:`${I('up')}Kéo tệp vào đây hoặc <b>bấm để chọn</b>`}</div>`:''}</div>
-      <div class="box"><h4>Ghi chú cho tài liệu</h4><div class="fld"><textarea id="dr-note" placeholder="Ví dụ: Thiếu trang 3, cần bản dịch công chứng…" ${R.canWrite?'':'disabled'}>${esc(noteVal)}</textarea></div>${R.canWrite?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm primary" data-savenote="${d.code}">Lưu ghi chú</button></div>`:''}</div>`;
+      <div class="box"><h4>Ghi chú cho tài liệu</h4><div class="fld"><textarea id="dr-note" placeholder="Ví dụ: Thiếu trang 3, cần bản dịch công chứng…" ${R.canReview?'':'disabled'}>${esc(noteVal)}</textarea></div>${R.canReview?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm primary" data-savenote="${d.code}">Lưu ghi chú</button></div>`:''}</div>`;
   } else if(DR.kind==='file'){
     const f=(R.files[c.id]||[]).find(x=>x._id===DR.arg);if(!f){closeDrawer();return}
     $('dr-eb').textContent=`${c.id} · ${f.code} · ${DOC[f.code]?DOC[f.code].name:''}`;$('dr-title').textContent=f.name;
@@ -636,7 +640,7 @@ function drawRender(soft){
       ${F('company','Công ty Việt Nam',v('company'),'full')}
       ${F('companyEn','Tên công ty (tiếng Anh)',v('companyEn'))}${F('mst','Mã số doanh nghiệp',v('mst'))}
       ${F('industry','Ngành',v('industry'))}
-      <div class="fld"><label for="f-office">Văn phòng</label><select id="f-office">${OFFICES.map(o=>`<option ${c0&&c0.office===o?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="fld"><label for="f-office">Văn phòng</label><input id="f-office" value="IDC VIETNAM" readonly tabindex="-1" style="background:var(--panel);color:var(--muted)"></div>
       ${F('staff','Chuyên viên phụ trách',v('staff'))}
       <div class="fld"><label for="f-opt">Phương án đầu tư</label><select id="f-opt">${[['?','Chưa xác định'],['A','A · Mở mới doanh nghiệp tại Mỹ'],['B','B · Đã có doanh nghiệp tại Mỹ']].map(([k,l])=>`<option value="${k}" ${(c0?c0.opt:'?')===k?'selected':''}>${l}</option>`).join('')}</select></div>
       ${F('us','Pháp nhân tại Mỹ',v('us'))}${F('state','Bang',v('state'))}
@@ -652,7 +656,7 @@ async function submitClient(e){
   e.preventDefault();if(!R.canWrite){toast('Bạn đang ở chế độ chỉ xem.');return}
   const g=k=>($('f-'+k)?$('f-'+k).value.trim():'');
   const isNew=DR.arg==='new';
-  const data={name:g('name'),company:g('company'),companyEn:g('companyEn'),mst:g('mst'),industry:g('industry'),office:g('office'),staff:g('staff'),opt:g('opt')||'?',us:g('us'),state:g('state'),deps:g('deps'),opened:g('opened'),charter:g('charter'),reg:g('reg'),owners:g('owners'),addr:g('addr'),note:g('note')};
+  const data={name:g('name'),company:g('company'),companyEn:g('companyEn'),mst:g('mst'),industry:g('industry'),office:'IDC VIETNAM',staff:g('staff'),opt:g('opt')||'?',us:g('us'),state:g('state'),deps:g('deps'),opened:g('opened'),charter:g('charter'),reg:g('reg'),owners:g('owners'),addr:g('addr'),note:g('note')};
   if(!data.name){toast('Nhập tên đương đơn.');return}
   if(isNew){
     const id=g('id').toUpperCase();if(!/^[A-Z0-9][A-Z0-9-]{2,30}$/.test(id)){toast('Mã hồ sơ chỉ gồm chữ, số và dấu gạch (ví dụ L1A-0023).');return}

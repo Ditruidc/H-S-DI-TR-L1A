@@ -5,7 +5,7 @@
 create table if not exists public.staff (
   email      text primary key,
   name       text,
-  role       text not null default 'staff' check (role in ('admin','staff','viewer')),
+  role       text not null default 'staff' check (role in ('admin','staff','lawyer')),
   created_at timestamptz not null default now()
 );
 
@@ -99,6 +99,8 @@ begin
    where id = p_id;
   if not found then raise exception 'client % not found', p_id; end if;
 end $$;
+
+-- Phân quyền Luật sư / chặn Nhân viên duyệt: chạy thêm supabase/roles.sql (thay thế patch_client ở trên)
 
 -- 4. Kho tệp (bucket riêng tư "hoso") ----------------------------------------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

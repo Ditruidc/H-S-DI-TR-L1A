@@ -14,7 +14,7 @@
     'Email hoặc mật khẩu không đúng.': 'Incorrect email or password.',
     'Tài khoản chưa được cấp quyền': 'Account not authorized yet',
     'chưa có trong danh sách nhân viên. Liên hệ quản trị viên để được thêm.': 'is not on the staff list. Contact an administrator to be added.',
-    'Quản trị viên': 'Administrator', 'Nhân viên · được chỉnh sửa': 'Staff · can edit', 'Chỉ xem': 'View only', 'Nhân viên': 'Staff',
+    'Quản trị viên': 'Administrator', 'Nhân viên · được chỉnh sửa': 'Staff · can edit', 'Chỉ xem': 'View only', 'Luật sư': 'Lawyer', 'Luật sư · xem & duyệt tài liệu': 'Lawyer · view & approve documents', 'Chờ Luật sư duyệt': 'Awaiting lawyer approval', 'Chỉ Luật sư hoặc Quản trị được duyệt / bỏ duyệt tài liệu.': 'Only a Lawyer or Admin can approve / unapprove documents.', 'Chỉ Quản trị hoặc Nhân viên được sửa thông tin hồ sơ.': 'Only Admin or Staff can edit case information.', 'Bộ phận tiếp nhận': 'Receiving department', 'Người xử lý hồ sơ': 'Case handler', 'Chuyên viên tư vấn': 'Consultant', 'Thông báo bổ sung': 'Document request', 'Nhân viên': 'Staff',
     'Đang tải dữ liệu…': 'Loading data…', 'Không đọc được dữ liệu': 'Could not load data', 'Chưa cấu hình Supabase (public/config.js).': 'Supabase is not configured (public/config.js).',
     'Bản xem thử · dữ liệu giả lập, thao tác không được lưu': 'Demo · sample data, changes are not saved',
     // Đã nhận
