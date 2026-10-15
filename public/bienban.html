@@ -7,7 +7,8 @@
 <title>Biên bản tiếp nhận hồ sơ · IDC VIETNAM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
-<style>body{font-family:Montserrat,Arial,sans-serif;background:#EEF2EC;color:#14201A}.msg{max-width:520px;margin:80px auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #DCE8D7;font-size:14px;line-height:1.6}</style>
+<style>html.exporting body{max-width:none!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#fff!important}html.exporting .bar{display:none!important}
+body{font-family:Montserrat,Arial,sans-serif;background:#EEF2EC;color:#14201A}.msg{max-width:520px;margin:80px auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #DCE8D7;font-size:14px;line-height:1.6}</style>
 <script src="/vendor/html2pdf.bundle.min.js" defer></script>
 </head>
 <body>
@@ -32,14 +33,21 @@
     b.disabled = true; b.textContent = 'Đang tạo PDF…';
     try {
       await document.fonts.ready;
+      /* html2canvas chụp lệch nếu trang đang cuộn hoặc đang căn giữa: đưa về góc trên trái, bỏ khung xem trên màn hình */
+      var sy = window.scrollY;
+      window.scrollTo(0, 0);
+      document.documentElement.classList.add('exporting');
+      await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+      var w = Math.ceil(doc.getBoundingClientRect().width);
       await html2pdf().set({
         margin: [12, 14, 12, 14], filename: (doc.dataset.no || 'Bien-ban') + '.pdf',
         image: { type: 'jpeg', quality: 0.96 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, x: 0, y: 0, windowWidth: w, width: w },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.sig', '.note', 'h2'] }
       }).from(doc).save();
     } catch (e) { alert('Không tạo được PDF: ' + e.message + '. Hãy dùng nút In → Lưu dưới dạng PDF.'); }
+    document.documentElement.classList.remove('exporting'); window.scrollTo(0, sy || 0);
     b.disabled = false; b.textContent = 'Tải file PDF';
   };
 })();
