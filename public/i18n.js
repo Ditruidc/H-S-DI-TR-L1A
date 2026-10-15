@@ -22,7 +22,8 @@
     'Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.': 'Documents the client submits will appear here with the date received.',
     // Thông báo email
     'Thông báo': 'Notifications', 'vừa xong': 'just now', 'hôm qua': 'yesterday', 'Tệp tải lên 30 ngày qua': 'Uploads in the last 30 days',
-    'Chưa có tệp nào được tải lên trong 30 ngày qua.': 'No files uploaded in the last 30 days.', 'Hiện thông báo trên máy tính khi có tệp mới': 'Show desktop alerts for new files',
+    'Chưa có tệp nào được tải lên trong 30 ngày qua.': 'No files uploaded in the last 30 days.', 'Bật thông báo trên máy tính khi có tệp mới': 'Turn on desktop alerts for new files', 'Bật': 'On', 'Gửi thử': 'Test', 'Thông báo trên máy tính:': 'Desktop alerts:', 'đang bật': 'on',
+    'Trình duyệt này không hỗ trợ thông báo trên máy tính.': 'This browser does not support desktop alerts.', 'Trình duyệt đang chặn thông báo. Bấm biểu tượng ổ khoá (bên trái địa chỉ web) → Thông báo → Cho phép, rồi tải lại trang.': 'The browser is blocking alerts. Click the lock icon left of the address → Notifications → Allow, then reload.',
     'Thông báo tệp mới': 'New-file notifications', 'Bật thông báo': 'Enable notifications', 'Gửi qua email': 'Send by email', 'Gửi thêm qua Zalo': 'Also send via Zalo',
     'Báo cho mọi người trên portal khi có tệp mới (5–8 phút) và tổng hợp lúc 17:00.': 'Alerts everyone on the portal about new files (within 5–8 minutes) plus a 17:00 summary.',
     'Nhận thông báo': 'Notifications', 'Nhận': 'On', 'Email nhận thêm': 'Extra email recipients', '(người không có tài khoản portal)': '(people without a portal account)',
@@ -209,7 +210,7 @@
     const top = document.querySelector('header.top'); if (!top || top.querySelector('.lang-sw')) return;
     const sw = document.createElement('div'); sw.className = 'lang-sw'; sw.setAttribute('role', 'group'); sw.setAttribute('data-noi18n', '');
     sw.setAttribute('aria-label', 'Language / Ngôn ngữ');
-    sw.innerHTML = '<button type="button" data-lang="vi">VI</button><button type="button" data-lang="en">EN</button>';
+    sw.innerHTML = '<button type="button" data-lang="vi" title="Tiếng Việt"><svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#DA251D"/><polygon fill="#FFCD00" points="15,4 16.76,9.42 22.47,9.42 17.86,12.77 19.62,18.19 15,14.84 10.38,18.19 12.14,12.77 7.53,9.42 13.24,9.42"/></svg>VI</button><button type="button" data-lang="en" title="English"><svg class="flag" viewBox="0 0 38 20" aria-hidden="true"><rect width="38" height="20" fill="#FFF"/><g fill="#B22234"><rect width="38" height="1.54"/><rect y="3.08" width="38" height="1.54"/><rect y="6.16" width="38" height="1.54"/><rect y="9.24" width="38" height="1.54"/><rect y="12.32" width="38" height="1.54"/><rect y="15.4" width="38" height="1.54"/><rect y="18.48" width="38" height="1.52"/></g><rect width="15.2" height="10.78" fill="#3C3B6E"/></svg>EN</button>';
     sw.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLang(b.dataset.lang); });
     top.appendChild(sw);
   }

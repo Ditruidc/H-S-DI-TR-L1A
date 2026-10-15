@@ -283,3 +283,12 @@ html[lang="en"] .en{display:none}
 .bp-empty{padding:28px 14px;color:var(--muted);font-size:13px;text-align:center}
 @media (max-width:900px){.bellwrap{order:1}}
 @media (max-width:640px){.bell-panel{position:fixed;left:16px;right:16px;top:64px;width:auto}}
+.bp-perm.on{background:var(--ok-bg);color:var(--ok);cursor:default}
+.bp-perm.off{background:var(--warn-bg);color:var(--warn);cursor:default;font-weight:500;align-items:flex-start}
+.bp-perm.off .i,.bp-perm.on .i{flex:none;margin-top:2px}
+.bp-perm span{flex:1}
+.bp-cta{flex:none;background:var(--accent);color:var(--accent-fg);border-radius:6px;padding:3px 10px;font-size:12px}
+.bp-link{flex:none;border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:2px 9px;font-size:12px;font-weight:600;cursor:pointer}
+.bp-link:hover{background:var(--bg)}
+.lang-sw button{display:inline-flex;align-items:center;gap:6px}
+.lang-sw .flag{width:18px;height:12px;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.12);display:block}

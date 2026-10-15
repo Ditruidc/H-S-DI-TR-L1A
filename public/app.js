@@ -162,9 +162,16 @@ function bellLine(x){
   const docs=codes.slice(0,3).map(k=>k+(DOC[k]?' · '+DOC[k].name:'')).join(', ')+(codes.length>3?` (+${codes.length-3})`:'');
   return `<button type="button" class="bp-item${x.by!==R.email&&x.at>BELL.seen?' un':''}" data-bellopen="${esc(x.client)}"><span class="bp-dot" aria-hidden="true"></span><span class="bp-t"><span><b>${esc(bellWho(x.by))}</b> đã tải ${x.files.length} tệp lên <b>${esc(x.client)}</b>${c&&c.name?' · '+esc(c.name):''}</span><span class="bp-s">${esc(docs)}</span><span class="bp-s">${esc(relTime(x.at))}</span></span></button>`;
 }
+function bellPermRow(){
+  if(!('Notification' in window))return `<div class="bp-perm off">${I('info',15)}<span>Trình duyệt này không hỗ trợ thông báo trên máy tính.</span></div>`;
+  const p=Notification.permission;
+  if(p==='granted')return `<div class="bp-perm on">${I('check',15)}<span>Thông báo trên máy tính: <b>đang bật</b></span><button type="button" class="bp-link" data-belltest>Gửi thử</button></div>`;
+  if(p==='denied')return `<div class="bp-perm off">${I('alert',15)}<span>Trình duyệt đang chặn thông báo. Bấm biểu tượng ổ khoá (bên trái địa chỉ web) → Thông báo → Cho phép, rồi tải lại trang.</span></div>`;
+  return `<button type="button" class="bp-perm" data-bellperm>${I('bell',15)}<span>Bật thông báo trên máy tính khi có tệp mới</span><b class="bp-cta">Bật</b></button>`;
+}
 function bellPanel(){
   const n=bellUnread().length;
-  const perm=('Notification' in window)&&Notification.permission==='default'?`<button type="button" class="bp-perm" data-bellperm>${I('bell',15)}<span>Hiện thông báo trên máy tính khi có tệp mới</span></button>`:'';
+  const perm=bellPermRow();
   return `<div class="bp-h"><b>Thông báo</b><span>${n?n+' mục mới':'Tệp tải lên 30 ngày qua'}</span></div>${perm}`+
     (BELL.items.length?`<div class="bp-list">${BELL.items.map(bellLine).join('')}</div>`:`<div class="bp-empty">Chưa có tệp nào được tải lên trong 30 ngày qua.</div>`);
 }
@@ -201,6 +208,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#bell')){toggleBell();return}
   const it=e.target.closest('[data-bellopen]');if(it){bellOpenCase(it.dataset.bellopen);return}
   if(e.target.closest('[data-bellperm]')){Notification.requestPermission().then(()=>renderBell());return}
+  if(e.target.closest('[data-belltest]')){try{const n=new Notification('IDC Portal · Thông báo thử',{body:'Thông báo trên máy tính đang hoạt động. Khi có tệp mới, thông báo sẽ hiện ở đây.',tag:'idc-test'});n.onclick=()=>{window.focus();n.close()}}catch(_){toast('Không gửi được thông báo thử.')}return}
   if(BELL.open&&!e.target.closest('#bellwrap'))toggleBell(false);
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&BELL.open){toggleBell(false);$('bell').focus()}});
