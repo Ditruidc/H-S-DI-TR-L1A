@@ -292,3 +292,21 @@ html[lang="en"] .en{display:none}
 .bp-link:hover{background:var(--bg)}
 .lang-sw button{display:inline-flex;align-items:center;gap:6px}
 .lang-sw .flag{width:18px;height:12px;border-radius:2px;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.12);display:block}
+
+/* Nút văn bản: xanh = biên bản tiếp nhận, cam = thông báo bổ sung */
+.btn.doc-ok{background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
+.btn.doc-ok:hover{border-color:var(--ok)}
+.btn.doc-wt{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn)}
+.btn.doc-wt:hover{border-color:var(--warn)}
+
+/* Tab theo màu trạng thái: đỏ = cần bổ sung, xanh dương = đã nhận, cam = chờ duyệt, xanh lá = đã duyệt */
+:root{--info:#1D5FB8;--info-bg:#E7EFFB}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--info:#7FB0F0;--info-bg:#132238}}
+:root[data-theme="dark"]{--info:#7FB0F0;--info-bg:#132238}
+.tab.t-bad{--tc:var(--bad);--tb:var(--bad-bg)} .tab.t-blue{--tc:var(--info);--tb:var(--info-bg)} .tab.t-warn{--tc:var(--warn);--tb:var(--warn-bg)} .tab.t-ok{--tc:var(--ok);--tb:var(--ok-bg)}
+.tab[class*="t-"]::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tc);flex:none}
+.tab[class*="t-"]:hover{color:var(--tc)}
+.tab[class*="t-"][aria-selected="true"]{color:var(--tc);border-bottom-color:var(--tc);background:var(--tb);border-radius:8px 8px 0 0;font-weight:600}
+.tab .c.blue{background:var(--info-bg);color:var(--info)}
+.pill.s-received{background:var(--info-bg);color:var(--info)}
+.tab[aria-selected="true"] .c{background:var(--bg)}
