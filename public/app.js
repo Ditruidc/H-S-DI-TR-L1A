@@ -180,7 +180,7 @@ async function afterAuth(){
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadPeople();
   await loadClients();
-  logLogin();presenceStart();
+  logLogin();presenceStart();if(R.canWrite)loadTrash().then(()=>autoPurge());if(S.view==='trash')loadTrash();
   bellStart();if(R.isAdmin)loadLogins();
   if(S.view==='admin')loadStaff();
   if(S.view==='report')loadReportFiles();
@@ -203,7 +203,7 @@ function watchFiles(id){if(!R.sb||!id||R.filesFor===id)return;R.filesFor=id;load
 async function loadFiles(id){
   const r=await R.sb.from('files').select('*').eq('client_id',id).order('created_at');
   if(r.error){toast('Không đọc được danh sách tệp: '+r.error.message);return}
-  R.files[id]=r.data.map(rowToFile);render();refreshDrawer();
+  R.files[id]=r.data.filter(x=>!x.deleted_at).map(rowToFile);render();refreshDrawer();
 }
 
 
@@ -245,7 +245,7 @@ function pendingFor(email,role){
 
 /* ---------- Báo cáo (chỉ Quản trị) ---------- */
 const RP={files:null,days:30};
-async function loadReportFiles(){if(!R.sb)return;const r=await R.sb.from('files').select('client_id,code,created_at,created_by').order('created_at',{ascending:false}).limit(5000);RP.files=r.error?[]:r.data;if(S.view==='report')render()}
+async function loadReportFiles(){if(!R.sb)return;const r=await R.sb.from('files').select('*').order('created_at',{ascending:false}).limit(5000);if(r.data)r.data=r.data.filter(x=>!x.deleted_at);RP.files=r.error?[]:r.data;if(S.view==='report')render()}
 function reportData(){
   const now=Date.now(),since=now-RP.days*DAY,files=RP.files||[],t=x=>Date.parse(x||'')||0;
   const people=(R.people||[]).filter(u=>u.role!=='admin');
@@ -396,8 +396,8 @@ function bellStart(){
 async function loadBell(first){
   if(!R.sb||!R.email)return;
   const since=new Date(Date.now()-30*864e5).toISOString();
-  const r=await R.sb.from('files').select('id,client_id,code,name,created_at,created_by').gte('created_at',since).order('created_at',{ascending:false}).limit(80);
-  if(r.error||!r.data)return;
+  const r=await R.sb.from('files').select('*').gte('created_at',since).order('created_at',{ascending:false}).limit(80);
+  if(r.error||!r.data)return;r.data=r.data.filter(x=>!x.deleted_at);
   if(!Object.keys(BELL.names).length){const s=await R.sb.from('staff').select('email,name');(s.data||[]).forEach(u=>{BELL.names[String(u.email).toLowerCase()]=u.name||''})}
   /* gom các tệp cùng người, cùng hồ sơ, cách nhau dưới 15 phút thành 1 dòng */
   const g=[];
@@ -535,14 +535,63 @@ async function uploadFiles(c,code,list){
 }
 async function deleteFile(c,f){
   if(!R.canWrite)return;
-  const d=await R.sb.from('files').delete().eq('id',f._id);
+  const d=await R.sb.rpc('trash_file',{p_id:f._id});
   if(d.error){toast(dbErr(d.error));return}
-  await R.sb.storage.from(BUCKET).remove([f.path]);
   await loadFiles(c.id);
   const cc=getC(c.id)||c;
-  await updateClient(cc,{},`${f.code}: xoá tệp ${f.name}`);
+  await updateClient(cc,{},`${f.code}: chuyển tệp ${f.name} vào Thùng rác`);
   if(!filesOf(cc,f.code).length&&stOf(cc,f.code)==='review')await setStatus(getC(c.id)||cc,f.code,'missing');
-  toast('Đã xoá '+f.name);
+  toast(`Đã chuyển ${f.name} vào Thùng rác · khôi phục được trong 60 ngày`);
+  loadTrash();
+}
+/* ---------- Thùng rác (60 ngày) ---------- */
+const TRASH_DAYS=60;
+const TR={rows:null,err:'',n:null,busy:false};
+const trashLeft=f=>Math.max(0,TRASH_DAYS-Math.floor((Date.now()-Date.parse(f.deleted_at))/864e5));
+async function loadTrash(){
+  if(!R.sb||!R.canWrite)return;
+  const r=await R.sb.from('files').select('*').order('created_at',{ascending:false}).limit(5000);
+  if(r.error){TR.err=r.error.message;TR.rows=[];}else{TR.err='';TR.rows=r.data.filter(x=>x.deleted_at).sort((a,b)=>String(b.deleted_at).localeCompare(String(a.deleted_at)))}
+  TR.n=TR.rows.length;navs();if(S.view==='trash')render();
+}
+function vTrash(){
+  const rows=TR.rows;const q=S.q.trim().toLowerCase();
+  const list=(rows||[]).filter(f=>{if(!q)return true;const c=getC(f.client_id);return (f.name+' '+f.code+' '+f.client_id+' '+((c&&c.name)||'')).toLowerCase().includes(q)});
+  const body=rows===null?`<div class="empty"><b>Đang tải…</b></div>`:
+    TR.err?`<div class="banner warn" style="margin:16px">${I('alert')}<div>Không đọc được Thùng rác: ${esc(TR.err)}</div></div>`:
+    !list.length?`<div class="empty"><b>Thùng rác trống</b>Tệp bị xoá sẽ nằm ở đây ${TRASH_DAYS} ngày trước khi xoá hẳn.</div>`:
+    `<div class="tbl-wrap"><table><thead><tr><th>Tệp</th><th>Hồ sơ</th><th>Tài liệu</th><th>Người xoá</th><th>Ngày xoá</th><th class="r">Còn lại</th><th></th></tr></thead><tbody>${list.map(f=>{const c=getC(f.client_id),left=trashLeft(f),d=DOC[f.code];return `<tr>
+      <td style="min-width:200px"><div class="dname">${I('file',14)} ${esc(f.name)}</div><div class="dnote">${f.size?(f.size/1048576).toFixed(f.size>1048576?1:2)+' MB · ':''}tải lên ${fmtDate(f.created_at)}${f.created_by?' · '+esc(personName(f.created_by)):''}</div></td>
+      <td><button class="row-link" data-open="${esc(f.client_id)}">${esc(f.client_id)}</button><div class="dnote">${esc((c&&c.name)||'')}</div></td>
+      <td><span class="mono">${esc(f.code)}</span><div class="dnote">${esc(d?d.name:'')}</div></td>
+      <td>${esc(personName(f.deleted_by||''))}</td>
+      <td class="num">${fmtTime(f.deleted_at)}</td>
+      <td class="r"><span class="pill ${left<=7?'s-missing':left<=20?'s-review':'s-na'}">${left} ngày</span></td>
+      <td class="r" style="white-space:nowrap"><button class="btn sm ghost" data-trview="${f.id}">Xem</button> <button class="btn sm addf" data-trrestore="${f.id}">${I('undo',14)}Khôi phục</button>${R.isAdmin?` <button class="btn sm ghost danger-t" data-trpurge="${f.id}" title="Xoá vĩnh viễn ngay, không khôi phục được">${I('trash',14)}</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
+  $('view').innerHTML=`<div class="phead"><div><div class="eyebrow">Thùng rác</div><h1>Tệp đã xoá</h1><p>Tệp bị xoá được giữ ${TRASH_DAYS} ngày. Trong thời gian đó bấm <b>Khôi phục</b> để đưa tệp về đúng tài liệu cũ. Quá ${TRASH_DAYS} ngày, tệp tự xoá vĩnh viễn.${R.isAdmin?'':' Bạn thấy tệp của các hồ sơ được phân cho mình.'}</p></div></div>
+  <section class="card"><div class="card-h"><h3>${rows?list.length:'…'} tệp</h3><span class="sp dnote">${R.isAdmin?'Quản trị: khôi phục mọi tệp, xoá vĩnh viễn ngay bằng nút 🗑.':'Nhân viên: khôi phục tệp của hồ sơ được phân công.'}</span></div>${body}</section>`;
+}
+async function restoreTrash(id){
+  const f=(TR.rows||[]).find(x=>x.id===id);if(!f)return;
+  const r=await R.sb.rpc('restore_file',{p_id:id});if(r.error){toast(dbErr(r.error));return}
+  const c=getC(f.client_id);
+  if(c){await updateClient(c,{},`${f.code}: khôi phục tệp ${f.name} từ Thùng rác`);const cc=getC(f.client_id)||c;if(stOf(cc,f.code)==='missing')await setStatus(cc,f.code,'review')}
+  if(R.files[f.client_id])loadFiles(f.client_id);
+  toast(`Đã khôi phục ${f.name} về ${f.client_id} · ${f.code}`);loadTrash();
+}
+let trArmed=null;
+async function purgeTrash(ids,silent){
+  const rows=(TR.rows||[]).filter(x=>ids.includes(x.id));const paths=rows.map(x=>x.storage_path).filter(Boolean);
+  if(paths.length){const rm=await R.sb.storage.from(BUCKET).remove(paths);if(rm.error){if(!silent)toast('Không xoá được tệp gốc: '+rm.error.message);return}}
+  const r=await R.sb.rpc('purge_files',{p_ids:ids});if(r.error){if(!silent)toast(dbErr(r.error));return}
+  if(!silent)toast('Đã xoá vĩnh viễn '+(rows[0]?rows[0].name:''));loadTrash();
+}
+async function autoPurge(){
+  if(!R.isAdmin)return;const k='idc_purge_'+R.email,today=new Date().toISOString().slice(0,10);
+  try{if(localStorage.getItem(k)===today)return}catch(_){}
+  const r=await R.sb.rpc('trash_expired');if(r.error||!r.data)return;
+  if(r.data.length){const paths=r.data.map(x=>x.storage_path).filter(Boolean);const rm=paths.length?await R.sb.storage.from(BUCKET).remove(paths):{};if(!rm.error)await R.sb.rpc('purge_files',{p_ids:r.data.map(x=>x.id)})}
+  try{localStorage.setItem(k,today)}catch(_){}
 }
 async function createClient(id,data){
   const now=new Date().toISOString();
@@ -699,7 +748,7 @@ IDC VIETNAM`;
 /* ---------- rendering ---------- */
 function navs(){
   const n=R.clients.length,logged=!!R.email&&!R.err;
-  $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'&&S.view!=='report'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="report" aria-current="${S.view==='report'}">${I('chart')}Báo cáo</button><button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:''):'';
+  $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'&&S.view!=='report'&&S.view!=='trash'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="report" aria-current="${S.view==='report'}">${I('chart')}Báo cáo</button><button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:'')+(R.canWrite?`<button data-go="trash" aria-current="${S.view==='trash'}">${I('trash')}Thùng rác${TR.n?`<span class="ct">${TR.n}</span>`:''}</button>`:''):'';
   $('nav-prog').innerHTML=`<button data-go="clients" aria-current="false">${I('folder')}L-1A → EB-1C<span class="ct">${logged?n:''}</span></button>`+['EB-5','E-2','Du học Mỹ'].map(p=>`<button disabled>${I('folder')}${p}<span class="soon">Sắp có</span></button>`).join('');
   $('nav-mobile').innerHTML=`<div class="logo">IDC</div>`+(logged?`<button class="chip" data-go="clients" aria-pressed="${S.view!=='admin'&&S.view!=='report'}">Hồ sơ</button>${R.isAdmin?`<button class="chip" data-go="report" aria-pressed="${S.view==='report'}">Báo cáo</button><button class="chip" data-go="admin" aria-pressed="${S.view==='admin'}">Quản trị</button>`:''}<button class="chip" data-act="logout">Đăng xuất</button>`:'');
   $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.role==='lawyer'?'Luật sư · xem & duyệt tài liệu':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><button class="btn sm" data-act="logout" style="margin-top:6px">Đăng xuất</button>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
@@ -708,7 +757,7 @@ function crumbs(){
   const c=S.client&&getC(S.client);
   $('crumbs').innerHTML=`<span>Hồ sơ định cư</span><span class="sep">/</span>`+(S.view==='case'&&c?`<button class="row-link" data-go="clients" style="font-weight:500;color:var(--muted)">L-1A → EB-1C</button><span class="sep">/</span><b class="mono">${esc(c.id)}</b>`:`<b>L-1A → EB-1C</b>`);
 }
-function render(){presenceTrack();navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='report'&&R.isAdmin){vReport();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
+function render(){presenceTrack();navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='report'&&R.isAdmin){vReport();return}if(S.view==='trash'&&R.canWrite){vTrash();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
 
 function vEmpty(){
   if(!R.ready)return `<div class="card empty"><b>Đang tải dữ liệu…</b></div>`;
@@ -975,7 +1024,7 @@ let upTarget=null,armed=null;
 document.addEventListener('click',async e=>{
   const t=e.target.closest('button,[data-open],[data-drop],tr[data-doc]');if(!t)return;
   const ds=t.dataset;const c=getC(S.client);
-  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin'){loadStaff();loadLogins();if(BELL.open)toggleBell(false)}if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
+  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin'){loadStaff();loadLogins();if(BELL.open)toggleBell(false)}if(ds.go==='report')loadReportFiles();if(ds.go==='trash'){TR.rows=null;loadTrash()}render();window.scrollTo(0,0);return}
   if(ds.staffdel){const r=await R.sb.from('staff').delete().eq('email',ds.staffdel);if(r.error)toast(dbErr(r.error));else{toast('Đã gỡ '+ds.staffdel);loadStaff()}return}
   if(ds.docdel!==undefined){t.closest('tr').remove();return}
   if(ds.asgall){const bx=[...document.querySelectorAll(`[data-asg][data-role="${ds.asgall}"]`)];const all=bx.every(x=>x.checked);bx.forEach(x=>x.checked=!all);$('asg-n')&&document.getElementById('dr-body').onchange();return}
@@ -989,7 +1038,10 @@ document.addEventListener('click',async e=>{
   if(ds.doc){openDrawer('doc',ds.doc);return}
   if(ds.view){openDrawer('file',ds.view);return}
   if(ds.dlf&&c){const f=(R.files[c.id]||[]).find(x=>x._id===ds.dlf);if(f)downloadFile(c,f);return}
-  if(ds.del&&c){if(armed!==ds.del){armed=ds.del;t.classList.add('btn','danger','armed');t.innerHTML='Xoá?';t.title='Bấm lần nữa để xoá';setTimeout(()=>{if(armed===ds.del){armed=null;render();refreshDrawer()}},4000);return}armed=null;const f=(R.files[c.id]||[]).find(x=>x._id===ds.del);if(f)deleteFile(c,f);return}
+  if(ds.trrestore){restoreTrash(ds.trrestore);return}
+  if(ds.trview){const f=(TR.rows||[]).find(x=>x.id===ds.trview);if(f){try{window.open(await signedUrl({path:f.storage_path}),'_blank','noopener')}catch(err){toast(err.message)}}return}
+  if(ds.trpurge){if(trArmed!==ds.trpurge){trArmed=ds.trpurge;t.classList.add('armed');t.innerHTML='Xoá hẳn?';t.title='Bấm lần nữa để xoá vĩnh viễn';setTimeout(()=>{if(trArmed===ds.trpurge){trArmed=null;render()}},4000);return}trArmed=null;purgeTrash([ds.trpurge]);return}
+  if(ds.del&&c){if(armed!==ds.del){armed=ds.del;t.classList.add('btn','danger','armed');t.innerHTML='Xoá?';t.title='Bấm lần nữa để chuyển tệp vào Thùng rác (giữ 60 ngày)';setTimeout(()=>{if(armed===ds.del){armed=null;render();refreshDrawer()}},4000);return}armed=null;const f=(R.files[c.id]||[]).find(x=>x._id===ds.del);if(f)deleteFile(c,f);return}
   if(ds.setst&&c){await setStatus(c,ds.code,ds.setst);refreshDrawer();return}
   if(ds.ask&&c){openDrawer('doc',ds.ask);setTimeout(()=>{const n=$('dr-note');if(n){n.focus();n.placeholder='Ghi rõ cần khách bổ sung gì, rồi bấm “Lưu ghi chú” và chọn Còn thiếu.'}},250);return}
   if(ds.savenote&&c){await saveNote(c,ds.savenote,$('dr-note').value.trim());return}
@@ -1033,7 +1085,7 @@ $('file').addEventListener('change',e=>{const c=getC(S.client);if(c&&upTarget)up
 $('scrim').addEventListener('click',closeDrawer);
 $('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
 function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.client:S.view))}catch(_){}}
-(function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
+(function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report'||h==='trash')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
 
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='ms-premium'){const b=document.querySelector('.ms-pp');if(b)b.hidden=!e.target.value}});
 

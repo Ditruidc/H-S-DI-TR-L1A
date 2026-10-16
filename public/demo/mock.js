@@ -157,6 +157,13 @@
         if (!window.__demoLoginSim) { window.__demoLoginSim = 1; setTimeout(() => { const row = { id: 99, email: 'lananh@idcvietnam.vn', at: new Date().toISOString(), kind: 'login', device: 'Máy tính · Chrome · Windows' }; DB.login_log.unshift(row); listeners.filter(l => l.table === 'login_log').forEach(l => l.cb({ eventType: 'INSERT', new: clone(row) })); }, 6000); }
         return { data: null, error: null };
       }
+      if (fn === 'trash_file' || fn === 'restore_file') {
+        const f = DB.files.find(x => x.id === a.p_id); if (!f) return { error: { message: 'Không tìm thấy tệp' } };
+        if (fn === 'trash_file') { f.deleted_at = new Date().toISOString(); f.deleted_by = ME; } else { f.deleted_at = null; f.deleted_by = null; }
+        emit('files'); return { data: null, error: null };
+      }
+      if (fn === 'trash_expired') return { data: DB.files.filter(x => x.deleted_at && Date.now() - Date.parse(x.deleted_at) > 60 * 864e5).map(x => ({ id: x.id, storage_path: x.storage_path })), error: null };
+      if (fn === 'purge_files') { const ids = a.p_ids || []; for (let i = DB.files.length - 1; i >= 0; i--) if (ids.includes(DB.files[i].id) && DB.files[i].deleted_at) DB.files.splice(i, 1); emit('files'); return { data: ids.length, error: null }; }
       if (fn === 'notify_test') return { data: ME + ' (bản xem thử không gửi thư thật)', error: null };
       if (fn !== 'patch_client') return { error: { message: 'Không hỗ trợ' } };
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };

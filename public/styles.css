@@ -578,3 +578,4 @@ html[lang="en"] .dept-en{display:none}
 .olpill.has i{background:#22A04B;box-shadow:0 0 0 3px rgba(34,160,75,.18)}
 .olpill:hover{border-color:#17631A}.olpill:focus-visible{outline:2px solid #17631A;outline-offset:2px}
 @media (max-width:640px){.olpill{padding:0 9px}.olpill span{font-size:0}.olpill span::after{content:attr(data-n)}}
+.btn.danger-t{color:#A3271D}.btn.danger-t:hover{background:#FBECE8;border-color:#F0C4B8}.btn.danger-t.armed{background:#A3271D;color:#fff;border-color:#A3271D}.btn.danger-t.armed .i{stroke:#fff}
