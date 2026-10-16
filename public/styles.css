@@ -579,3 +579,27 @@ html[lang="en"] .dept-en{display:none}
 .olpill:hover{border-color:#17631A}.olpill:focus-visible{outline:2px solid #17631A;outline-offset:2px}
 @media (max-width:640px){.olpill{padding:0 9px}.olpill span{font-size:0}.olpill span::after{content:attr(data-n)}}
 .btn.danger-t{color:#A3271D}.btn.danger-t:hover{background:#FBECE8;border-color:#F0C4B8}.btn.danger-t.armed{background:#A3271D;color:#fff;border-color:#A3271D}.btn.danger-t.armed .i{stroke:#fff}
+
+/* ---------- phân trang danh sách ---------- */
+.pager{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);background:#FAFCF9;border-radius:0 0 14px 14px}
+.pg-nav{display:flex;gap:6px}
+.pg-arrow{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:#fff;color:#2B382B}
+.pg-arrow:hover:not([disabled]){border-color:#17631A;color:#17631A}
+.pg-arrow[disabled]{opacity:.4;cursor:not-allowed;background:#F1F4F0}
+.pg-arrow:focus-visible,.pg-n:focus-visible{outline:2px solid #17631A;outline-offset:2px}
+.pg-info{font-size:13px;color:#2B382B}.pg-info b{font-variant-numeric:tabular-nums}
+.pg-nums{display:flex;gap:4px;align-items:center}
+.pg-n{all:unset;box-sizing:border-box;cursor:pointer;min-width:32px;height:32px;padding:0 8px;display:grid;place-items:center;border-radius:8px;font-size:12.5px;font-weight:600;color:#3B4A3B;font-variant-numeric:tabular-nums}
+.pg-n:hover{background:#EEF3EC}.pg-n.on{background:#17631A;color:#fff}
+.pg-gap{color:#9AA59A;padding:0 2px}
+.pg-cust{position:relative}
+.pg-cust .btn{height:36px}
+.pg-pop{position:absolute;right:0;bottom:calc(100% + 8px);z-index:30;width:240px;max-height:60vh;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px -12px rgba(16,40,16,.35);padding:8px}
+.pg-pop-h{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;font-size:13px}
+.pg-col{display:flex;align-items:center;gap:8px;padding:6px;border-radius:7px;font-size:13px;cursor:pointer}
+.pg-col:hover{background:#F3F7F1}.pg-col.dis{opacity:.6;cursor:default}
+.pg-col input{accent-color:#17631A;width:15px;height:15px}
+.pg-per select{height:36px;border:1px solid var(--border);border-radius:9px;padding:0 10px;background:#fff;font:inherit;font-size:13px;color:#2B382B;cursor:pointer}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:640px){.pager{gap:8px}.pg-nums{order:5;width:100%;justify-content:center}.pg-per select{max-width:150px}}
+.pager .sp{flex:1 1 auto}

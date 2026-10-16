@@ -1,6 +1,6 @@
 
 /* ---------- helpers ---------- */
-const P={users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+const P={cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 down:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
@@ -135,7 +135,7 @@ const EXT_TYPE={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'ima
 /* ---------- state ---------- */
 const CFG=window.APP_CONFIG||{};
 const BUCKET=CFG.BUCKET||'hoso';
-const S={view:'clients',client:null,tab:'missing',q:'',filter:'all',dept:''};
+const S={view:'clients',client:null,tab:'missing',q:'',filter:'all',dept:'',page:1,colOpen:false};
 const R={sb:null,session:null,email:null,role:null,canWrite:false,isAdmin:false,ready:false,err:null,clients:[],files:{},filesFor:null,urls:{},staff:[]};
 const getC=id=>R.clients.find(c=>c.id===id);
 const stOf=(c,code)=>(c.docs&&c.docs[code]&&c.docs[code].s)||'missing';
@@ -832,6 +832,43 @@ function readProgramForm(){
   return{docs,steps,pay};
 }
 async function loadStaff(){const r=await R.sb.from('staff').select('*').order('email');R.staff=r.data||[];const n=await R.sb.from('settings').select('value').eq('key','notify').maybeSingle();R.notify=n.data?n.data.value:null;if(S.view==='admin')render()}
+/* ---------- danh sách hồ sơ: cột tuỳ chỉnh + phân trang ---------- */
+const CL_COLS=[
+ {k:'stt',t:'STT',cls:'r',td:(c,s,n)=>`<td class="r num muted">${n}</td>`},
+ {k:'name',t:'Khách hàng',fixed:1,td:c=>`<td><div class="who"><div class="av">${esc(initials(c.name))}</div><div style="min-width:0"><button class="row-link" data-open="${esc(c.id)}">${esc(c.name||'—')}</button>${(()=>{const tm=caseTiming(c);return tm.st==='late'||tm.st==='soon'?` <span class="pill ${stPill[tm.st]}" style="font-size:10.5px">${esc(tm.label)}</span>`:''})()}<div class="dnote">${esc(c.company||'')}</div></div></div></td>`},
+ {k:'id',t:'Mã hồ sơ',td:c=>`<td class="mono">${esc(c.id)}</td>`},
+ {k:'step',t:'Tiến trình',td:c=>`<td><div class="stepdots">${[1,2,3,4,5].map(i=>`<i class="${i<=(c.step||1)?'on':''}"></i>`).join('')}</div><div class="dnote" style="margin-top:4px">Bước ${c.step||1} · ${STEPS[(c.step||1)-1].t}</div></td>`},
+ {k:'docs',t:'Tài liệu',td:(c,s)=>{const w=x=>(s.req?x/s.req*100:0).toFixed(1)+'%';return `<td><div class="bar"><i class="a" style="width:${w(s.approved)}"></i><i class="r" style="width:${w(s.review)}"></i><i class="m" style="width:${w(s.missing)}"></i></div><div class="dnote num" style="margin-top:4px">${s.approved}/${s.req} đã duyệt</div></td>`}},
+ {k:'rcv',t:'Đã nhận',cls:'r',td:(c,s)=>`<td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>`},
+ {k:'miss',t:'Còn thiếu',cls:'r',td:(c,s)=>`<td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>`},
+ {k:'rev',t:'Chờ duyệt',cls:'r',td:(c,s)=>`<td class="r num">${s.review||'—'}</td>`},
+ {k:'staff',t:'Chuyên viên',td:c=>`<td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}${R.isAdmin?`<button class="btn asg-btn" data-assignopen="${esc(c.id)}">${I('users',14)}Phân công</button>`:''}</td>`},
+ {k:'due',t:'Hạn hoàn thiện',off:1,td:c=>{const tm=caseTiming(c);return `<td class="num">${tm.due?fmtDate(new Date(tm.due).toISOString()):'—'}${tm.label?`<div class="dnote">${esc(tm.label)}</div>`:''}</td>`}},
+ {k:'opt',t:'Phương án',off:1,td:c=>`<td>${esc(c.opt&&c.opt!=='?'?optLabel(c.opt):'—')}</td>`},
+ {k:'us',t:'Công ty tại Mỹ',off:1,td:c=>`<td>${esc(c.us||'—')}${c.state?`<div class="dnote">${esc(stateLabel(c.state))}</div>`:''}</td>`},
+ {k:'industry',t:'Ngành',off:1,td:c=>`<td>${esc(c.industry||'—')}</td>`},
+ {k:'opened',t:'Ngày mở hồ sơ',off:1,td:c=>`<td class="num">${esc(c.opened||'—')}</td>`},
+ {k:'upd',t:'Cập nhật',td:c=>`<td class="dnote">${fmtTime(c.updatedAt)||'—'}</td>`}];
+const PG={get per(){let v=20;try{v=+localStorage.getItem('idc_per')||20}catch(_){}return [10,20,50,100].includes(v)?v:20},set per(v){try{localStorage.setItem('idc_per',String(v))}catch(_){}},
+  get cols(){let v=null;try{v=JSON.parse(localStorage.getItem('idc_cols')||'null')}catch(_){}return Array.isArray(v)?v:CL_COLS.filter(x=>!x.off).map(x=>x.k)},set cols(v){try{localStorage.setItem('idc_cols',JSON.stringify(v))}catch(_){}}};
+function pageNums(cur,tot){if(tot<=7)return [...Array(tot)].map((_,i)=>i+1);const o=[1];if(cur>3)o.push('…');for(let i=Math.max(2,cur-1);i<=Math.min(tot-1,cur+1);i++)o.push(i);if(cur<tot-2)o.push('…');o.push(tot);return o}
+function clTable(list){
+  const per=PG.per,tot=Math.max(1,Math.ceil(list.length/per));S.page=Math.min(Math.max(1,S.page||1),tot);
+  const from=(S.page-1)*per,rows=list.slice(from,from+per);const on=PG.cols;const cols=CL_COLS.filter(x=>x.fixed||on.includes(x.k));
+  const table=`<div class="tbl-wrap"><table><thead><tr>${cols.map(x=>`<th${x.cls?` class="${x.cls}"`:''}>${x.t}</th>`).join('')}</tr></thead>
+    <tbody>${rows.length?rows.map((c,i)=>{const s=stats(c);return `<tr class="click" data-open="${esc(c.id)}">${cols.map(x=>x.td(c,s,from+i+1)).join('')}</tr>`}).join(''):`<tr><td colspan="${cols.length}" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody></table></div>`;
+  const nums=pageNums(S.page,tot).map(n=>n==='…'?'<span class="pg-gap">…</span>':`<button class="pg-n${n===S.page?' on':''}" data-pg="${n}" aria-label="Trang ${n}" ${n===S.page?'aria-current="page"':''}>${n}</button>`).join('');
+  const pop=S.colOpen?`<div class="pg-pop" role="dialog" aria-label="Chọn cột hiển thị"><div class="pg-pop-h"><b>Cột hiển thị</b><button class="bp-link" data-colreset>Mặc định</button></div>${CL_COLS.map(x=>`<label class="pg-col${x.fixed?' dis':''}"><input type="checkbox" data-col="${x.k}" ${x.fixed||on.includes(x.k)?'checked':''} ${x.fixed?'disabled':''}>${x.t}</label>`).join('')}</div>`:'';
+  const bar=`<div class="pager">
+    <div class="pg-nav"><button class="pg-arrow" data-pg="${S.page-1}" ${S.page<=1?'disabled':''} aria-label="Trang trước">${I('chl',16)}</button><button class="pg-arrow" data-pg="${S.page+1}" ${S.page>=tot?'disabled':''} aria-label="Trang sau">${I('chr',16)}</button></div>
+    <span class="pg-info">Hiển thị <b>${list.length?from+1:0} - ${from+rows.length}</b> / <b>${list.length}</b> kết quả</span>
+    ${tot>1?`<div class="pg-nums">${nums}</div>`:''}
+    <span class="sp"></span>
+    <div class="pg-cust"><button class="btn" data-pgcust aria-expanded="${!!S.colOpen}">${I('cog',15)}Tùy chỉnh</button>${pop}</div>
+    <label class="pg-per"><span class="sr">Số dòng mỗi trang</span><select id="pg-per">${[10,20,50,100].map(n=>`<option value="${n}" ${n===per?'selected':''}>Hiển thị ${n} kết quả/trang</option>`).join('')}</select></label>
+  </div>`;
+  return table+bar;
+}
 function vClients(){
   const q=S.q.trim().toLowerCase();
   const all=R.clients;
@@ -850,19 +887,7 @@ function vClients(){
   </section>
   <section class="card">
     <div class="card-h"><div class="chips">${[['all','Tất cả'],['missing','Còn thiếu tài liệu'],['review','Có tài liệu chờ duyệt'],['done','Đã đủ']].map(([k,l])=>`<button class="chip" data-filter="${k}" aria-pressed="${S.filter===k}">${l}<span class="n">${cnt(k)}</span></button>`).join('')}</div></div>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Tiến trình</th><th>Tài liệu</th><th class="r">Đã nhận</th><th class="r">Còn thiếu</th><th class="r">Chờ duyệt</th><th>Chuyên viên</th><th>Cập nhật</th></tr></thead>
-      <tbody>${list.length?list.map(c=>{const s=stats(c),w=x=>(s.req?x/s.req*100:0).toFixed(1)+'%';return `<tr class="click" data-open="${esc(c.id)}">
-        <td><div class="who"><div class="av">${esc(initials(c.name))}</div><div style="min-width:0"><button class="row-link" data-open="${esc(c.id)}">${esc(c.name||'—')}</button>${(()=>{const tm=caseTiming(c);return tm.st==='late'||tm.st==='soon'?` <span class="pill ${stPill[tm.st]}" style="font-size:10.5px">${esc(tm.label)}</span>`:''})()}<div class="dnote">${esc(c.company||'')}</div></div></div></td>
-        <td class="mono">${esc(c.id)}</td>
-        <td><div class="stepdots">${[1,2,3,4,5].map(i=>`<i class="${i<=(c.step||1)?'on':''}"></i>`).join('')}</div><div class="dnote" style="margin-top:4px">Bước ${c.step||1} · ${STEPS[(c.step||1)-1].t}</div></td>
-        <td><div class="bar"><i class="a" style="width:${w(s.approved)}"></i><i class="r" style="width:${w(s.review)}"></i><i class="m" style="width:${w(s.missing)}"></i></div><div class="dnote num" style="margin-top:4px">${s.approved}/${s.req} đã duyệt</div></td>
-        <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
-        <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
-        <td class="r num">${s.review||'—'}</td>
-        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}${R.isAdmin?`<button class="btn asg-btn" data-assignopen="${esc(c.id)}">${I('users',14)}Phân công</button>`:''}</td>
-        <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
-    </table></div>
+    ${clTable(list)}
   </section>`:vEmpty()}`;
 }
 
@@ -1030,7 +1055,10 @@ document.addEventListener('click',async e=>{
   if(ds.asgall){const bx=[...document.querySelectorAll(`[data-asg][data-role="${ds.asgall}"]`)];const all=bx.every(x=>x.checked);bx.forEach(x=>x.checked=!all);$('asg-n')&&document.getElementById('dr-body').onchange();return}
   if(ds.assignopen){S.view='case';S.client=ds.assignopen;S.tab='missing';setHash();render();setTimeout(()=>openDrawer('assign'),50);return}
   if(ds.open){S.view='case';S.client=ds.open;S.tab=stats(getC(ds.open)).missing?'missing':'review';S.q='';$('q').value='';setHash();render();window.scrollTo(0,0);return}
-  if(ds.filter){S.filter=ds.filter;return render()}
+  if(ds.filter){S.filter=ds.filter;S.page=1;return render()}
+  if(ds.pg){S.page=+ds.pg;render();const t2=document.querySelector('.kpis+.card')||document.querySelector('.card');if(t2)t2.scrollIntoView({block:'start',behavior:'smooth'});return}
+  if(ds.pgcust!==undefined){S.colOpen=!S.colOpen;return render()}
+  if(ds.colreset!==undefined){try{localStorage.removeItem('idc_cols')}catch(_){}return render()}
   if(ds.tab){S.tab=ds.tab;return render()}
   if(ds.dept!==undefined){S.dept=ds.dept;return render()}
   if(ds.step&&c){const n=+ds.step;if(n>=2&&(c.step||1)===1){const st=stats(c);const left=st.req-st.approved;if(left>0&&!confirm(`Còn ${left} tài liệu bắt buộc chưa được duyệt. Vẫn chuyển hồ sơ sang Bước ${n}?`))return}if(n!==(c.step||1))await updateClient(c,{step:n},`Chuyển sang bước ${n}: ${STEPS[n-1].t}`);return}
@@ -1083,10 +1111,15 @@ document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.clo
 document.addEventListener('drop',e=>{const z=e.target.closest&&e.target.closest('[data-drop]');if(!z)return;e.preventDefault();z.classList.remove('over');const c=getC(S.client);if(c&&e.dataTransfer.files.length)uploadFiles(c,z.dataset.drop,e.dataTransfer.files)});
 $('file').addEventListener('change',e=>{const c=getC(S.client);if(c&&upTarget)uploadFiles(c,upTarget,e.target.files);upTarget=null});
 $('scrim').addEventListener('click',closeDrawer);
-$('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
+$('q').addEventListener('input',e=>{S.q=e.target.value;S.page=1;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
 function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.client:S.view))}catch(_){}}
 (function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report'||h==='trash')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
 
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='ms-premium'){const b=document.querySelector('.ms-pp');if(b)b.hidden=!e.target.value}});
 
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='lg-f'){S.lgf=e.target.value;render()}});
+
+document.addEventListener('change',e=>{const t=e.target;if(!t)return;
+  if(t.id==='pg-per'){PG.per=+t.value;S.page=1;render();return}
+  if(t.dataset&&t.dataset.col){const on=new Set(PG.cols);t.checked?on.add(t.dataset.col):on.delete(t.dataset.col);PG.cols=CL_COLS.filter(x=>on.has(x.k)).map(x=>x.k);render()}});
+document.addEventListener('click',e=>{if(S.colOpen&&!e.target.closest('.pg-cust')){S.colOpen=false;render()}});
