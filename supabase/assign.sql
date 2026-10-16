@@ -53,8 +53,8 @@ begin
   if r <> 'admin' and not (coalesce(cur -> 'assignees','[]'::jsonb) ? who) then
     raise exception 'permission denied: hồ sơ này chưa được phân cho bạn';
   end if;
-  if r <> 'admin' and patch ? 'assignees' then
-    raise exception 'permission denied: chỉ Quản trị được phân công hồ sơ';
+  if r <> 'admin' and (patch ? 'assignees' or patch ? 'due') then
+    raise exception 'permission denied: chỉ Quản trị được phân công / đặt hạn hồ sơ';
   end if;
   if r = 'lawyer' and exists (select 1 from jsonb_object_keys(patch) k where k <> 'docs') then
     raise exception 'permission denied: Luật sư chỉ được cập nhật trạng thái và ghi chú tài liệu';

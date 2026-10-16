@@ -148,6 +148,7 @@
     },
     from: t => Q(t),
     rpc: async (fn, a) => {
+      if (fn === 'notify_remind') return { data: 'Bản xem thử: không gửi email thật cho ' + a.p_email, error: null };
       if (fn === 'notify_test') return { data: ME + ' (bản xem thử không gửi thư thật)', error: null };
       if (fn !== 'patch_client') return { error: { message: 'Không hỗ trợ' } };
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };

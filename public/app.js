@@ -130,68 +130,134 @@ async function loadFiles(id){
 }
 
 
+/* ---------- Hạn xử lý, dự báo, việc tồn (dùng cho Báo cáo + nhắc nhở) ---------- */
+const DAY=864e5;
+const parseDMY=v=>{if(!v)return 0;const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(v));if(m)return Date.UTC(+m[3],+m[2]-1,+m[1])-7*36e5;const t=Date.parse(v);return isNaN(t)?0:t};
+const isoDay=t=>{const d=new Date(t+7*36e5);return d.toISOString().slice(0,10)};
+/* Hạn hoàn thiện chứng từ: đặt tay trong Phân công; mặc định = ngày mở hồ sơ + 30 ngày */
+function dueOf(c){if(c.due)return Date.parse(c.due+'T23:59:59+07:00')||0;const o=parseDMY(c.opened)||Date.parse(c.createdAt||'')||0;return o?o+30*DAY:0}
+function caseTiming(c){
+  const now=Date.now(),s=stats(c),due=dueOf(c),left=due?Math.ceil((due-now)/DAY):null,done=!s.missing&&!s.review;
+  const appr=Object.values(c.docs||{}).filter(x=>x&&x.s==='approved'&&x.at&&now-Date.parse(x.at)<=30*DAY).length;
+  const rcvd=Object.values(c.docs||{}).filter(x=>x&&(x.s==='approved'||x.s==='review')&&x.at&&now-Date.parse(x.at)<=30*DAY).length;
+  const rate=Math.max(appr,rcvd)/30,remain=s.req-s.approved;
+  const eta=done?now:rate>0?now+Math.ceil(remain/rate)*DAY:0;
+  let st='ok',label='Đúng tiến độ';
+  if(done){st='done';label='Đã hoàn thiện'}
+  else if(due&&now>due){st='late';label=`Quá hạn ${-left} ngày`}
+  else if(left!==null&&left<=7){st='soon';label=`Còn ${left} ngày`}
+  else if(eta&&due&&eta>due){st='risk';label=`Dự kiến trễ ${Math.ceil((eta-due)/DAY)} ngày`}
+  else if(!eta){st='risk';label='Chưa có tiến triển 30 ngày'}
+  return {due,left,eta,st,label,done,remain};
+}
+/* Việc tồn của một người: hồ sơ quá hạn, tài liệu chờ duyệt lâu (Luật sư), hồ sơ không thao tác 7 ngày */
+function pendingFor(email,role){
+  const now=Date.now(),out=[];
+  R.clients.filter(c=>assigneesOf(c).includes(email)).forEach(c=>{
+    const s=stats(c),tm=caseTiming(c);if(tm.done)return;
+    const mine=(c.log||[]).filter(l=>String(l.by||'').toLowerCase()===email).map(l=>Date.parse(l.t)||0);
+    const lastMine=mine.length?Math.max(...mine):0,idle=lastMine?Math.floor((now-lastMine)/DAY):null;
+    const why=[];
+    if(tm.st==='late')why.push(['bad',tm.label]);
+    if(role==='lawyer'){const old=Object.values(c.docs||{}).filter(x=>x&&x.s==='review'&&x.at&&now-Date.parse(x.at)>3*DAY).length;if(old)why.push(['warn',`${old} tài liệu chờ duyệt > 3 ngày`])}
+    else if(s.missing&&(idle===null||idle>=7))why.push(['warn',idle===null?'Chưa thao tác lần nào':`Chưa thao tác ${idle} ngày`]);
+    if(why.length)out.push({c,why,idle});
+  });
+  return out;
+}
+
 /* ---------- Báo cáo (chỉ Quản trị) ---------- */
 const RP={files:null,days:30};
 async function loadReportFiles(){if(!R.sb)return;const r=await R.sb.from('files').select('client_id,code,created_at,created_by').order('created_at',{ascending:false}).limit(5000);RP.files=r.error?[]:r.data;if(S.view==='report')render()}
 function reportData(){
-  const now=Date.now(),D=864e5,since=now-RP.days*D,files=RP.files||[];
-  const t=x=>Date.parse(x||'')||0;
+  const now=Date.now(),since=now-RP.days*DAY,files=RP.files||[],t=x=>Date.parse(x||'')||0;
   const people=(R.people||[]).filter(u=>u.role!=='admin');
-  const row=()=>({cases:0,req:0,rcv:0,approved:0,review:0,missing:0,uploads:0,approvals:0});
+  const row=()=>({cases:0,req:0,rcv:0,approved:0,review:0,missing:0,uploads:0,approvals:0,late:0});
   const by={};people.forEach(u=>by[u.email]=row());const none=row();
-  R.clients.forEach(c=>{const s=stats(c),as=assigneesOf(c);const tgt=as.length?as.map(e=>by[e]||(by[e]=row())):[none];
-    tgt.forEach(r=>{r.cases++;r.req+=s.req;r.rcv+=s.rcv;r.approved+=s.approved;r.review+=s.review;r.missing+=s.missing})});
+  const timing=new Map(R.clients.map(c=>[c.id,caseTiming(c)]));
+  R.clients.forEach(c=>{const s=stats(c),as=assigneesOf(c),tm=timing.get(c.id);const tgt=as.length?as.map(e=>by[e]||(by[e]=row())):[none];
+    tgt.forEach(r=>{r.cases++;r.req+=s.req;r.rcv+=s.rcv;r.approved+=s.approved;r.review+=s.review;r.missing+=s.missing;if(tm.st==='late')r.late++})});
   files.forEach(f=>{if(t(f.created_at)>=since){const e=String(f.created_by||'').toLowerCase();if(by[e])by[e].uploads++}});
-  const approvals=[];R.clients.forEach(c=>Object.entries(c.docs||{}).forEach(([k,x])=>{if(x&&x.s==='approved'&&x.at)approvals.push({c,code:k,at:t(x.at),by:String(x.by||'').toLowerCase()})}));
+  const approvals=[];R.clients.forEach(c=>Object.entries(c.docs||{}).forEach(([k,x])=>{if(x&&x.s==='approved'&&x.at)approvals.push({at:t(x.at),by:String(x.by||'').toLowerCase()})}));
   approvals.forEach(a=>{if(a.at>=since&&by[a.by])by[a.by].approvals++});
-  const tot=R.clients.reduce((o,c)=>{const s=stats(c);o.req+=s.req;o.approved+=s.approved;o.review+=s.review;o.missing+=s.missing;o.rcv+=s.rcv;if(!s.missing&&!s.review)o.done++;return o},{req:0,approved:0,review:0,missing:0,rcv:0,done:0});
+  const tot=R.clients.reduce((o,c)=>{const s=stats(c);o.req+=s.req;o.approved+=s.approved;o.review+=s.review;o.missing+=s.missing;return o},{req:0,approved:0,review:0,missing:0});
+  const cnt=k=>[...timing.values()].filter(x=>x.st===k).length;
   const steps=STEPS.map((x,i)=>({t:x.t,n:R.clients.filter(c=>(c.step||1)===i+1).length}));
-  const weeks=[];for(let i=7;i>=0;i--){const end=now-i*7*D,start=end-7*D;weeks.push({label:fmtDate(new Date(start+D).toISOString()).slice(0,5),up:files.filter(f=>t(f.created_at)>=start&&t(f.created_at)<end).length,ap:approvals.filter(a=>a.at>=start&&a.at<end).length})}
-  const attn=[];R.clients.forEach(c=>{const s=stats(c),why=[];const upd=t(c.updatedAt);
-    if(!assigneesOf(c).length)why.push(['bad','Chưa phân công']);
-    if(s.missing&&upd&&now-upd>14*D)why.push(['warn',`Không cập nhật ${Math.floor((now-upd)/D)} ngày`]);
-    const old=Object.values(c.docs||{}).filter(x=>x&&x.s==='review'&&x.at&&now-t(x.at)>7*D).length;if(old)why.push(['warn',`${old} tài liệu chờ duyệt quá 7 ngày`]);
-    if(why.length)attn.push({c,why})});
-  return {by,none,people,tot,steps,weeks,attn,uploads:files.filter(f=>t(f.created_at)>=since).length,approvals:approvals.filter(a=>a.at>=since).length};
+  const weeks=[];for(let i=7;i>=0;i--){const end=now-i*7*DAY,start=end-7*DAY;weeks.push({label:fmtDate(new Date(start+DAY).toISOString()).slice(0,5),up:files.filter(f=>t(f.created_at)>=start&&t(f.created_at)<end).length,ap:approvals.filter(a=>a.at>=start&&a.at<end).length})}
+  const pend=people.map(u=>({u,items:pendingFor(u.email,u.role)}));
+  return {by,none,people,tot,steps,weeks,timing,pend,late:cnt('late'),soon:cnt('soon'),risk:cnt('risk'),done:cnt('done'),uploads:files.filter(f=>t(f.created_at)>=since).length,approvals:approvals.filter(a=>a.at>=since).length};
 }
+/* --- biểu đồ SVG (màu trạng thái cố định: xanh = đã duyệt, cam = chờ duyệt, đỏ nhạt = còn thiếu) --- */
+const CC={ok:'#17663A',rv:'#C98A0A',ms:'#D9786B',up:'#17631A',ap:'#E0A800',grid:'#E3EAE1'};
+function donut(parts,center,sub){
+  const tot=parts.reduce((a,p)=>a+p.v,0)||1,r=54,C=2*Math.PI*r;let off=0;
+  const segs=parts.filter(p=>p.v).map(p=>{const len=p.v/tot*C,gap=parts.filter(x=>x.v).length>1?2:0;const el=`<circle r="${r}" cx="70" cy="70" fill="none" stroke="${p.c}" stroke-width="18" stroke-dasharray="${Math.max(0,len-gap)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(p.l)}: ${p.v} (${Math.round(p.v/tot*100)}%)</title></circle>`;off+=len;return el}).join('');
+  return `<div class="rp-donut"><svg viewBox="0 0 140 140" role="img" aria-label="${esc(parts.map(p=>p.l+' '+p.v).join(', '))}"><circle r="${r}" cx="70" cy="70" fill="none" stroke="#EEF3EC" stroke-width="18"/>${segs}<text x="70" y="68" text-anchor="middle" class="big">${center}</text><text x="70" y="86" text-anchor="middle" class="sm">${sub}</text></svg>
+  <ul class="rp-lg">${parts.map(p=>`<li><i style="background:${p.c}"></i><span>${esc(p.l)}</span><b class="num">${p.v}</b><em class="num">${Math.round(p.v/tot*100)}%</em></li>`).join('')}</ul></div>`;
+}
+function hbars(rows){
+  const max=Math.max(1,...rows.map(r=>r.a+r.b+r.c));
+  return `<div class="rp-hb">${rows.map(r=>{const w=x=>x/max*100;return `<div class="rp-hb-row"><span class="nm">${esc(r.name)}<em>${esc(r.sub)}</em></span><div class="trk" title="${esc(r.name)}: ${r.a} đã duyệt · ${r.b} chờ duyệt · ${r.c} còn thiếu">${r.a?`<i style="width:${w(r.a)}%;background:${CC.ok}"></i>`:''}${r.b?`<i style="width:${w(r.b)}%;background:${CC.rv}"></i>`:''}${r.c?`<i style="width:${w(r.c)}%;background:${CC.ms}"></i>`:''}</div><b class="num">${r.a+r.b+r.c}</b></div>`}).join('')}</div>
+  <div class="rp-lg row"><span><i style="background:${CC.ok}"></i>Đã duyệt</span><span><i style="background:${CC.rv}"></i>Chờ duyệt</span><span><i style="background:${CC.ms}"></i>Còn thiếu</span></div>`;
+}
+function weekChart(weeks){
+  const W=560,H=200,P={l:30,r:8,t:12,b:26},iw=W-P.l-P.r,ih=H-P.t-P.b,max=Math.max(4,...weeks.map(w=>Math.max(w.up,w.ap)));
+  const nice=Math.ceil(max/4)*4,x=i=>P.l+iw*(i+.5)/weeks.length,y=v=>P.t+ih-(v/nice)*ih,bw=Math.min(16,iw/weeks.length/3);
+  const grid=[0,.25,.5,.75,1].map(f=>`<line x1="${P.l}" x2="${W-P.r}" y1="${y(nice*f)}" y2="${y(nice*f)}" stroke="${CC.grid}"/><text x="${P.l-6}" y="${y(nice*f)+4}" text-anchor="end" class="ax">${Math.round(nice*f)}</text>`).join('');
+  const bars=weeks.map((w,i)=>`<g><rect x="${x(i)-bw-1}" y="${y(w.up)}" width="${bw}" height="${Math.max(0,P.t+ih-y(w.up))}" rx="3" fill="${CC.up}"/><rect x="${x(i)+1}" y="${y(w.ap)}" width="${bw}" height="${Math.max(0,P.t+ih-y(w.ap))}" rx="3" fill="${CC.ap}"/><rect x="${x(i)-iw/weeks.length/2}" y="${P.t}" width="${iw/weeks.length}" height="${ih}" fill="transparent"><title>Tuần từ ${w.label}: ${w.up} tệp tải lên · ${w.ap} tài liệu duyệt</title></rect><text x="${x(i)}" y="${H-8}" text-anchor="middle" class="ax">${w.label}</text></g>`).join('');
+  return `<svg class="rp-wk" viewBox="0 0 ${W} ${H}" role="img" aria-label="Hoạt động 8 tuần">${grid}${bars}</svg><div class="rp-lg row"><span><i style="background:${CC.up}"></i>Tệp tải lên</span><span><i style="background:${CC.ap}"></i>Tài liệu được duyệt</span></div>`;
+}
+const stPill={late:'s-missing',soon:'s-review',risk:'s-review',ok:'s-approved',done:'s-approved'};
 function vReport(){
   if(!RP.files){$('view').innerHTML=`<div class="card empty"><b>Đang tải số liệu…</b></div>`;loadReportFiles();return}
   const d=reportData(),pct=(a,b)=>b?Math.round(a/b*100):0;
-  const rows=[...d.people.map(u=>({u,r:d.by[u.email]}))].sort((a,b)=>b.r.cases-a.r.cases);
-  const maxW=Math.max(1,...d.weeks.map(w=>w.up+w.ap)),maxS=Math.max(1,...d.steps.map(x=>x.n));
+  const rows=d.people.map(u=>({u,r:d.by[u.email]})).sort((a,b)=>b.r.cases-a.r.cases);
+  const cases=R.clients.map(c=>({c,tm:d.timing.get(c.id)})).sort((a,b)=>({late:0,soon:1,risk:2,ok:3,done:4}[a.tm.st]-{late:0,soon:1,risk:2,ok:3,done:4}[b.tm.st])||(a.tm.due-b.tm.due));
+  const pendN=d.pend.reduce((a,p)=>a+p.items.length,0);
   $('view').innerHTML=`
-  <div class="phead"><div><div class="eyebrow">Quản trị · Báo cáo</div><h1>Báo cáo &amp; đánh giá kết quả</h1><p>Tiến độ hồ sơ L-1A → EB-1C, khối lượng xử lý của từng Nhân viên / Luật sư và các hồ sơ cần chú ý.</p></div>
+  <div class="phead"><div><div class="eyebrow">Quản trị · Báo cáo</div><h1>Báo cáo &amp; đánh giá kết quả</h1><p>Tiến độ hồ sơ, hạn hoàn thiện chứng từ, khối lượng xử lý và việc tồn của từng Nhân viên / Luật sư.</p></div>
     <div class="actions"><div class="seg rp-seg">${[7,30,90].map(n=>`<button data-rpdays="${n}" aria-pressed="${RP.days===n}">${n} ngày</button>`).join('')}</div><button class="btn" data-act="reportCsv">${I('sheet')}Xuất CSV</button></div></div>
-  <div class="kpis">
-    <div class="kpi"><div class="eyebrow">Hồ sơ</div><div class="v num">${R.clients.length}</div><div class="s">${d.tot.done} hồ sơ đã đủ & duyệt hết</div></div>
-    <div class="kpi"><div class="eyebrow">Hoàn thiện</div><div class="v num">${pct(d.tot.approved,d.tot.req)}%</div><div class="s">${d.tot.approved}/${d.tot.req} tài liệu đã duyệt</div></div>
-    <div class="kpi"><div class="eyebrow">Tệp nhận ${RP.days} ngày</div><div class="v num">${d.uploads}</div><div class="s">${d.approvals} tài liệu được duyệt cùng kỳ</div></div>
-    <div class="kpi"><div class="eyebrow">Cần chú ý</div><div class="v num">${d.attn.length}</div><div class="s">${d.tot.review} tài liệu đang chờ duyệt</div></div>
+  <div class="kpis rp-kpis">
+    <div class="kpi"><div class="eyebrow">Hồ sơ đang xử lý</div><div class="v num">${R.clients.length-d.done}<small>/${R.clients.length}</small></div><div class="s">${d.done} hồ sơ đã hoàn thiện chứng từ</div></div>
+    <div class="kpi k-bad"><div class="eyebrow">Quá hạn</div><div class="v num">${d.late}</div><div class="s">${d.soon} hồ sơ đến hạn trong 7 ngày</div></div>
+    <div class="kpi k-warn"><div class="eyebrow">Có nguy cơ trễ</div><div class="v num">${d.risk}</div><div class="s">Theo tốc độ xử lý 30 ngày gần nhất</div></div>
+    <div class="kpi k-gold"><div class="eyebrow">Việc tồn cần nhắc</div><div class="v num">${pendN}</div><div class="s">${d.pend.filter(p=>p.items.length).length} người có việc chưa xử lý</div></div>
   </div>
-  <section class="card"><div class="card-h"><h3>Theo người phụ trách</h3><span class="dnote sp">Tệp tải lên &amp; duyệt tính trong ${RP.days} ngày gần nhất</span></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Người phụ trách</th><th class="r">Hồ sơ</th><th>Hoàn thiện</th><th class="r">Đã nhận</th><th class="r">Chờ duyệt</th><th class="r">Còn thiếu</th><th class="r">Tệp tải lên</th><th class="r">Đã duyệt</th></tr></thead><tbody>
-    ${rows.map(({u,r})=>`<tr><td><div class="who"><div class="av">${esc(initials(u.name||u.email))}</div><div><b>${esc(u.name||u.email)}</b><div class="dnote">${u.role==='lawyer'?'Luật sư':'Nhân viên'}</div></div></div></td><td class="r num">${r.cases}</td><td><div class="rp-bar"><i style="width:${pct(r.approved,r.req)}%"></i></div><div class="dnote num">${pct(r.approved,r.req)}% · ${r.approved}/${r.req}</div></td><td class="r num">${r.rcv}</td><td class="r num">${r.review||'—'}</td><td class="r num">${r.missing?`<span class="count-bad">${r.missing}</span>`:'—'}</td><td class="r num">${u.role==='lawyer'?'—':r.uploads}</td><td class="r num">${r.approvals||'—'}</td></tr>`).join('')}
-    ${d.none.cases?`<tr><td><b style="color:var(--warn)">Chưa phân công</b></td><td class="r num">${d.none.cases}</td><td><div class="rp-bar"><i style="width:${pct(d.none.approved,d.none.req)}%"></i></div><div class="dnote num">${pct(d.none.approved,d.none.req)}%</div></td><td class="r num">${d.none.rcv}</td><td class="r num">${d.none.review||'—'}</td><td class="r num">${d.none.missing?`<span class="count-bad">${d.none.missing}</span>`:'—'}</td><td class="r">—</td><td class="r">—</td></tr>`:''}
+  <div class="rp-grid3">
+    <section class="card"><div class="card-h"><h3>Tình trạng tài liệu</h3><span class="dnote sp">Toàn bộ hồ sơ</span></div><div class="card-b">${donut([{l:'Đã duyệt',v:d.tot.approved,c:CC.ok},{l:'Chờ duyệt',v:d.tot.review,c:CC.rv},{l:'Còn thiếu',v:d.tot.missing,c:CC.ms}],pct(d.tot.approved,d.tot.req)+'%','hoàn thiện')}</div></section>
+    <section class="card"><div class="card-h"><h3>Hoạt động 8 tuần gần nhất</h3><span class="dnote sp">${d.uploads} tệp · ${d.approvals} duyệt trong ${RP.days} ngày</span></div><div class="card-b">${weekChart(d.weeks)}</div></section>
+  </div>
+  <section class="card"><div class="card-h"><h3>Hạn hoàn thiện chứng từ &amp; dự kiến</h3><span class="dnote sp">Hạn đặt trong <b>Phân công</b> · mặc định ngày mở hồ sơ + 30 ngày</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Khách hàng</th><th>Phụ trách</th><th>Tiến độ</th><th>Hạn hoàn thiện</th><th>Dự kiến xong</th><th>Tình trạng</th></tr></thead><tbody>
+    ${cases.map(({c,tm})=>{const s=stats(c);return `<tr class="click" data-open="${esc(c.id)}"><td><b>${esc(c.name||'—')}</b><div class="dnote">${esc(c.id)} · ${esc(c.company||'')}</div></td><td>${esc(assigneesOf(c).map(personName).join(', ')||'—')}</td><td><div class="rp-bar"><i style="width:${pct(s.approved,s.req)}%"></i></div><div class="dnote num">${s.approved}/${s.req} đã duyệt · còn ${s.missing} thiếu</div></td><td class="num">${tm.due?fmtDate(new Date(tm.due).toISOString()):'—'}${!c.due&&tm.due?'<div class="dnote">mặc định</div>':''}</td><td class="num">${tm.done?'—':tm.eta?fmtDate(new Date(tm.eta).toISOString()):'<span class="dnote">chưa đủ dữ liệu</span>'}</td><td><span class="pill ${stPill[tm.st]}">${esc(tm.label)}</span></td></tr>`}).join('')}
     </tbody></table></div></section>
-  <div class="rp-grid">
-    <section class="card"><div class="card-h"><h3>Hoạt động 8 tuần gần nhất</h3><span class="sp rp-legend"><i class="u"></i>Tệp tải lên <i class="a"></i>Tài liệu được duyệt</span></div>
-      <div class="card-b"><div class="rp-cols">${d.weeks.map(w=>`<div class="rp-col" title="Tuần từ ${w.label}: ${w.up} tệp, ${w.ap} duyệt"><div class="stack" style="height:${Math.round((w.up+w.ap)/maxW*100)}%"><i class="a" style="flex:${w.ap}"></i><i class="u" style="flex:${w.up}"></i></div><b class="num">${w.up+w.ap||''}</b><span>${w.label}</span></div>`).join('')}</div></div></section>
-    <section class="card"><div class="card-h"><h3>Hồ sơ theo bước lộ trình</h3></div>
-      <div class="card-b rp-steps">${d.steps.map((x,i)=>`<div class="rp-step"><span class="n">${i+1}</span><span class="l">${esc(x.t)}</span><div class="rp-bar big"><i style="width:${Math.round(x.n/maxS*100)}%"></i></div><b class="num">${x.n}</b></div>`).join('')}</div></section>
+  <div class="rp-grid3">
+    <section class="card"><div class="card-h"><h3>Khối lượng theo người phụ trách</h3></div><div class="card-b">${hbars(rows.map(({u,r})=>({name:u.name||u.email,sub:u.role==='lawyer'?'Luật sư':'Nhân viên',a:r.approved,b:r.review,c:r.missing})))}</div></section>
+    <section class="card"><div class="card-h"><h3>Việc tồn &amp; nhắc nhở</h3><span class="dnote sp">Email nhắc tự gửi 8:45 sáng mỗi ngày</span></div><div class="card-b rp-pend">
+      ${d.pend.map(({u,items})=>`<div class="rp-p ${items.length?'has':''}"><div class="who"><div class="av">${esc(initials(u.name||u.email))}</div><div><b>${esc(u.name||u.email)}</b><div class="dnote">${u.role==='lawyer'?'Luật sư':'Nhân viên'} · ${d.by[u.email].cases} hồ sơ</div></div></div>
+        ${items.length?`<ul>${items.slice(0,4).map(({c,why})=>`<li><button class="row-link" data-open="${esc(c.id)}">${esc(c.id)}</button> ${why.map(([k,m])=>`<span class="pill ${k==='bad'?'s-missing':'s-review'}">${esc(m)}</span>`).join(' ')}</li>`).join('')}${items.length>4?`<li class="dnote">+${items.length-4} hồ sơ khác</li>`:''}</ul><button class="btn sm asg-btn" data-remind="${esc(u.email)}">${I('mail',13)}Gửi nhắc nhở</button>`:`<span class="pill s-approved">Không có việc tồn</span>`}</div>`).join('')||'<div class="dnote">Chưa có Nhân viên / Luật sư.</div>'}
+    </div></section>
   </div>
-  <section class="card"><div class="card-h"><h3>Hồ sơ cần chú ý</h3><span class="dnote sp">${d.attn.length} hồ sơ</span></div>
-    ${d.attn.length?`<div class="tbl-wrap"><table><thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Phụ trách</th><th>Lý do</th></tr></thead><tbody>${d.attn.map(({c,why})=>`<tr class="click" data-open="${esc(c.id)}"><td><b>${esc(c.name||'—')}</b><div class="dnote">${esc(c.company||'')}</div></td><td class="mono">${esc(c.id)}</td><td>${esc(assigneesOf(c).map(personName).join(', ')||'—')}</td><td>${why.map(([k,m])=>`<span class="pill ${k==='bad'?'s-missing':'s-review'}">${esc(m)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty"><b>Không có hồ sơ nào cần chú ý</b>Mọi hồ sơ đều đã phân công và đang được cập nhật đều.</div>`}
-  </section>`;
+  <section class="card"><div class="card-h"><h3>Chi tiết theo người phụ trách</h3><span class="dnote sp">Tệp tải lên &amp; duyệt tính trong ${RP.days} ngày</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Người phụ trách</th><th class="r">Hồ sơ</th><th class="r">Quá hạn</th><th>Hoàn thiện</th><th class="r">Chờ duyệt</th><th class="r">Còn thiếu</th><th class="r">Tệp tải lên</th><th class="r">Đã duyệt</th></tr></thead><tbody>
+    ${rows.map(({u,r})=>`<tr><td><div class="who"><div class="av">${esc(initials(u.name||u.email))}</div><div><b>${esc(u.name||u.email)}</b><div class="dnote">${u.role==='lawyer'?'Luật sư':'Nhân viên'}</div></div></div></td><td class="r num">${r.cases}</td><td class="r num">${r.late?`<span class="count-bad">${r.late}</span>`:'—'}</td><td><div class="rp-bar"><i style="width:${pct(r.approved,r.req)}%"></i></div><div class="dnote num">${pct(r.approved,r.req)}% · ${r.approved}/${r.req}</div></td><td class="r num">${r.review||'—'}</td><td class="r num">${r.missing||'—'}</td><td class="r num">${u.role==='lawyer'?'—':r.uploads}</td><td class="r num">${r.approvals||'—'}</td></tr>`).join('')}
+    ${d.none.cases?`<tr><td><b style="color:var(--warn)">Chưa phân công</b></td><td class="r num">${d.none.cases}</td><td class="r num">${d.none.late||'—'}</td><td><div class="rp-bar"><i style="width:${pct(d.none.approved,d.none.req)}%"></i></div><div class="dnote num">${pct(d.none.approved,d.none.req)}%</div></td><td class="r num">${d.none.review||'—'}</td><td class="r num">${d.none.missing||'—'}</td><td class="r">—</td><td class="r">—</td></tr>`:''}
+    </tbody></table></div></section>
+  <section class="card"><div class="card-h"><h3>Hồ sơ theo bước lộ trình</h3></div><div class="card-b rp-steps">${(()=>{const mx=Math.max(1,...d.steps.map(x=>x.n));return d.steps.map((x,i)=>`<div class="rp-step"><span class="n">${i+1}</span><span class="l">${esc(x.t)}</span><div class="rp-bar big"><i style="width:${Math.round(x.n/mx*100)}%"></i></div><b class="num">${x.n}</b></div>`).join('')})()}</div></section>`;
 }
 function reportCsv(){
   const d=reportData(),pct=(a,b)=>b?Math.round(a/b*100):0;
-  const L=[['Người phụ trách','Vai trò','Hồ sơ','Tài liệu bắt buộc','Đã nhận','Đã duyệt','Hoàn thiện %','Chờ duyệt','Còn thiếu',`Tệp tải lên ${RP.days} ngày`,`Đã duyệt ${RP.days} ngày`]];
-  d.people.forEach(u=>{const r=d.by[u.email];L.push([u.name||u.email,u.role==='lawyer'?'Luật sư':'Nhân viên',r.cases,r.req,r.rcv,r.approved,pct(r.approved,r.req),r.review,r.missing,r.uploads,r.approvals])});
-  if(d.none.cases)L.push(['Chưa phân công','',d.none.cases,d.none.req,d.none.rcv,d.none.approved,pct(d.none.approved,d.none.req),d.none.review,d.none.missing,'','']);
-  const csv='﻿'+L.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const L=[['Mã hồ sơ','Khách hàng','Công ty','Phụ trách','Tài liệu bắt buộc','Đã duyệt','Chờ duyệt','Còn thiếu','Hạn hoàn thiện','Dự kiến xong','Tình trạng']];
+  R.clients.forEach(c=>{const s=stats(c),tm=d.timing.get(c.id);L.push([c.id,c.name||'',c.company||'',assigneesOf(c).map(personName).join(', '),s.req,s.approved,s.review,s.missing,tm.due?fmtDate(new Date(tm.due).toISOString()):'',tm.eta&&!tm.done?fmtDate(new Date(tm.eta).toISOString()):'',tm.label])});
+  L.push([]);L.push(['Người phụ trách','Vai trò','Hồ sơ','Quá hạn','Hoàn thiện %','Chờ duyệt','Còn thiếu',`Tệp tải lên ${RP.days} ngày`,`Đã duyệt ${RP.days} ngày`,'Việc tồn']);
+  d.people.forEach(u=>{const r=d.by[u.email],p=d.pend.find(x=>x.u===u);L.push([u.name||u.email,u.role==='lawyer'?'Luật sư':'Nhân viên',r.cases,r.late,pct(r.approved,r.req),r.review,r.missing,r.uploads,r.approvals,p?p.items.length:0])});
+  const csv='﻿'+L.map(r=>r.map(x=>`"${String(x??'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Bao-cao-ho-so-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
 }
-document.addEventListener('click',e=>{const b=e.target.closest('[data-rpdays]');if(b){RP.days=+b.dataset.rpdays;render()}});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-rpdays]');if(b){RP.days=+b.dataset.rpdays;render();return}
+  const m=e.target.closest('[data-remind]');if(m){m.disabled=true;const r=await R.sb.rpc('notify_remind',{p_email:m.dataset.remind});m.disabled=false;toast(r.error?(/function|does not exist/i.test(r.error.message)?'Chưa cài phần nhắc nhở trên Supabase (reminders.sql).':dbErr(r.error)):(r.data||'Đã gửi email nhắc nhở'));}
+});
 
 /* ---------- chuông thông báo: tệp mới do người khác tải lên ---------- */
 const BELL={items:[],seen:0,open:false,names:{},timer:null,poll:null,known:new Set()};
@@ -584,6 +650,7 @@ function vClients(){
   $('view').innerHTML=`
   <div class="phead"><div><div class="eyebrow">Chương trình · L-1A → EB-1C</div><h1>Hồ sơ khách hàng</h1><p>Chọn một hồ sơ để xem những tài liệu còn thiếu, tải tệp lên, duyệt và tải hồ sơ về.</p></div>
    <div class="actions"><button class="btn" data-act="exportExcel" ${all.length?'':'disabled'}>${I('sheet')}Xuất Excel</button>${R.canWrite?`<button class="btn primary" data-act="newClient">${I('plus')}Thêm hồ sơ</button>`:''}</div></div>
+  ${(()=>{if(R.isAdmin||!R.email)return'';const items=pendingFor(R.email,R.role);if(!items.length)return'';return `<section class="todo"><div class="todo-h">${I('alert',18)}<div><b>Việc cần làm của bạn · ${items.length} hồ sơ</b><span>Hồ sơ quá hạn hoặc chưa được xử lý gần đây. Quản trị cũng nhận được danh sách này.</span></div></div><ul>${items.map(({c,why})=>`<li><button class="row-link" data-open="${esc(c.id)}">${esc(c.id)} · ${esc(c.name||'')}</button>${why.map(([k,m])=>`<span class="pill ${k==='bad'?'s-missing':'s-review'}">${esc(m)}</span>`).join('')}</li>`).join('')}</ul></section>`})()}
   ${all.length?`<section class="kpis">
     <div class="kpi"><div class="eyebrow">Hồ sơ</div><div class="v num">${all.length}</div><div class="s">${all.filter(c=>(c.step||1)===1).length} hồ sơ đang thu thập chứng từ</div></div>
     <div class="kpi"><div class="eyebrow">Tài liệu còn thiếu</div><div class="v num" style="color:var(--bad)">${miss}</div><div class="s">Cần khách bổ sung</div></div>
@@ -595,7 +662,7 @@ function vClients(){
     <div class="tbl-wrap"><table>
       <thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Tiến trình</th><th>Tài liệu</th><th class="r">Đã nhận</th><th class="r">Còn thiếu</th><th class="r">Chờ duyệt</th><th>Chuyên viên</th><th>Cập nhật</th></tr></thead>
       <tbody>${list.length?list.map(c=>{const s=stats(c),w=x=>(s.req?x/s.req*100:0).toFixed(1)+'%';return `<tr class="click" data-open="${esc(c.id)}">
-        <td><div class="who"><div class="av">${esc(initials(c.name))}</div><div style="min-width:0"><button class="row-link" data-open="${esc(c.id)}">${esc(c.name||'—')}</button><div class="dnote">${esc(c.company||'')}</div></div></div></td>
+        <td><div class="who"><div class="av">${esc(initials(c.name))}</div><div style="min-width:0"><button class="row-link" data-open="${esc(c.id)}">${esc(c.name||'—')}</button>${(()=>{const tm=caseTiming(c);return tm.st==='late'||tm.st==='soon'?` <span class="pill ${stPill[tm.st]}" style="font-size:10.5px">${esc(tm.label)}</span>`:''})()}<div class="dnote">${esc(c.company||'')}</div></div></div></td>
         <td class="mono">${esc(c.id)}</td>
         <td><div class="stepdots">${[1,2,3,4,5].map(i=>`<i class="${i<=(c.step||1)?'on':''}"></i>`).join('')}</div><div class="dnote" style="margin-top:4px">Bước ${c.step||1} · ${STEPS[(c.step||1)-1].t}</div></td>
         <td><div class="bar"><i class="a" style="width:${w(s.approved)}"></i><i class="r" style="width:${w(s.review)}"></i><i class="m" style="width:${w(s.missing)}"></i></div><div class="dnote num" style="margin-top:4px">${s.approved}/${s.req} đã duyệt</div></td>
@@ -657,7 +724,7 @@ function vCase(){
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
         <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>IDC VIETNAM</span><span>Chuyên viên: ${esc(c.staff||'—')}</span><span>${esc(optLabel(c.opt))}</span></div>
-        <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${R.isAdmin?`<button class="btn asg-cta" data-act="assign">${I('users',15)}Phân công xử lý</button>`:''}</div>
+        <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${(()=>{const tm=caseTiming(c);return tm.due?`<span class="pill ${stPill[tm.st]}" title="Hạn hoàn thiện chứng từ">${I('clock',12)} Hạn ${fmtDate(new Date(tm.due).toISOString())} · ${esc(tm.label)}</span>`:''})()}${R.isAdmin?`<button class="btn asg-cta" data-act="assign">${I('users',15)}Phân công xử lý</button>`:''}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
@@ -704,6 +771,7 @@ function drawRender(soft){
     const grp=(role,label,hint)=>{const l=(R.people||[]).filter(u=>u.role===role);return `<div class="box asg-grp"><div class="asg-h"><h4>${label} <span class="dnote">(${l.length})</span></h4>${l.length>1?`<button type="button" class="btn sm ghost" data-asgall="${role}">Chọn tất cả</button>`:''}</div>${hint?`<div class="dnote" style="margin:-2px 0 4px">${hint}</div>`:''}${l.length?l.map(u=>`<label class="asg"><input type="checkbox" data-asg="${esc(u.email)}" data-role="${role}" ${cur.has(u.email)?'checked':''}><span class="av sm">${esc(initials(u.name||u.email))}</span><span><b>${esc(u.name||u.email)}</b><em>${esc(u.email)} · ${roleName[role]}</em></span></label>`).join(''):'<div class="dnote">Chưa có tài khoản nào với quyền này. Thêm ở Quản trị → Nhân viên.</div>'}</div>`};
     $('dr-eb').textContent=`Hồ sơ ${c.id} · ${c.name||''}`;$('dr-title').textContent='Phân công xử lý hồ sơ';$('dr-acts').innerHTML=`<button class="icon-btn" data-act="close" aria-label="Đóng">${I('x')}</button>`;
     body.innerHTML=`<div class="banner"><span>${I('info',16)}</span><div>Tích chọn <b>một hoặc nhiều người</b> cùng xử lý hồ sơ này. Nhân viên và Luật sư <b>chỉ thấy hồ sơ được phân cho mình</b>; Quản trị luôn thấy tất cả. Người được phân nhận email khi hồ sơ có tệp mới.</div></div>
+    <div class="box asg-grp"><div class="asg-h"><h4>Hạn hoàn thiện chứng từ</h4></div><div class="dnote" style="margin:-2px 0 6px">Quá hạn mà còn thiếu tài liệu sẽ báo đỏ trong Báo cáo và nhắc người phụ trách qua email. Để trống = ngày mở hồ sơ + 30 ngày.</div><input type="date" id="asg-due" value="${esc(c.due||'')}" class="asg-date"><span class="dnote" style="margin-left:8px">${c.due?'':'Mặc định: '+(dueOf(c)?fmtDate(new Date(dueOf(c)).toISOString()):'—')}</span></div>
     ${grp('staff','Nhân viên','Tải tệp, cập nhật thông tin hồ sơ')}${grp('lawyer','Luật sư','Duyệt tài liệu, yêu cầu bổ sung')}${grp('admin','Quản trị','Luôn thấy mọi hồ sơ; tích để nhận email của hồ sơ này')}
     <div class="asg-foot"><span class="dnote" id="asg-n"></span><button class="btn primary" data-act="saveAssign">${I('check',14)}Lưu phân công</button><button class="btn" data-act="close">Huỷ</button></div>`;
     const cnt=()=>{const n=body.querySelectorAll('[data-asg]:checked').length;$('asg-n').textContent=n?`Đã chọn ${n} người`:'Chưa chọn ai'};cnt();body.onchange=cnt;
@@ -781,7 +849,7 @@ document.addEventListener('click',async e=>{
     case 'editClient':return openDrawer('client','edit');
     case 'assign':return openDrawer('assign');
     case 'reportCsv':return reportCsv();
-    case 'saveAssign':{const list=[...document.querySelectorAll('[data-asg]')].filter(x=>x.checked).map(x=>x.dataset.asg);if(await updateClient(c,{assignees:list},'Phân công: '+(list.length?list.map(personName).join(', '):'bỏ phân công'))){closeDrawer();toast('Đã lưu phân công')}return}
+    case 'saveAssign':{const list=[...document.querySelectorAll('[data-asg]')].filter(x=>x.checked).map(x=>x.dataset.asg);const due=($('asg-due')||{}).value||'';const msg='Phân công: '+(list.length?list.map(personName).join(', '):'bỏ phân công')+(due!==(c.due||'')?` · hạn ${due?fmtDate(due):'mặc định'}`:'');if(await updateClient(c,{assignees:list,due},msg)){closeDrawer();toast('Đã lưu phân công')}return}
     case 'exportExcel':return exportExcel();
     case 'zip':return zipCase(c);
     case 'receipt':return openReceipt(c);
