@@ -184,8 +184,12 @@ begin
      group by f.client_id, cl.data
     having max(f.created_at) < now() - interval '3 minutes'   -- chờ khách/nhân viên tải xong một đợt
   loop
-    -- người nhận: mọi tài khoản portal đang bật "Nhận thông báo" + danh sách nhận thêm
-    rcpt := array(select s.email from public.staff s where s.notify) || instant;
+    -- chỉ Quản trị + người được phân công hồ sơ này
+    rcpt := array(select s.email from public.staff s
+                   where s.notify
+                     and (s.role = 'admin'
+                          or coalesce((select cl2.data -> 'assignees' from public.clients cl2 where cl2.id = c.client_id), '[]'::jsonb) ? lower(s.email)))
+            || instant;
     -- một người tự tải tất cả tệp → không báo lại cho chính người đó
     rcpt := public.notify_clean(rcpt, case when cardinality(c.uploaders) = 1 then c.uploaders[1] end);
 

@@ -17,7 +17,7 @@ ext:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2
 undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
 mail:'<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
 info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',list:'<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
-bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'};
+bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',chart:'<path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/>',clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'};
 const I=(n,s)=>`<svg class="i" viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''} aria-hidden="true">${P[n]}</svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const slug=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -103,14 +103,19 @@ async function afterAuth(){
   R.role=me.data.role;R.name=me.data.name||'';R.isAdmin=me.data.role==='admin';R.canWrite=me.data.role==='admin'||me.data.role==='staff';R.canReview=R.canWrite||me.data.role==='lawyer';R.canApprove=R.isAdmin||me.data.role==='lawyer';R.err=null;
   const st=await R.sb.from('settings').select('value').eq('key','program_l1a').maybeSingle();
   if(st.data&&st.data.value)applyProgram(st.data.value);
+  await loadPeople();
   await loadClients();
   bellStart();
   if(S.view==='admin')loadStaff();
+  if(S.view==='report')loadReportFiles();
   if(!channel){channel=R.sb.channel('hoso-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'clients'},()=>loadClients())
     .on('postgres_changes',{event:'*',schema:'public',table:'files'},p=>{const cid=(p.new&&p.new.client_id)||(p.old&&p.old.client_id);if(cid&&cid===R.filesFor)loadFiles(cid,true);bellLive(p)})
     .subscribe()}
 }
+async function loadPeople(){const r=await R.sb.from('staff').select('email,name,role').order('name');R.people=(r.data||[]).map(u=>Object.assign(u,{email:String(u.email).toLowerCase()}))}
+const personName=e=>{const u=(R.people||[]).find(x=>x.email===String(e||'').toLowerCase());return (u&&u.name)||String(e||'').split('@')[0]};
+const assigneesOf=c=>Array.isArray(c.assignees)?c.assignees:[];
 async function loadClients(){
   const r=await R.sb.from('clients').select('*').order('id');
   if(r.error){R.err={message:r.error.message};R.ready=true;render();return}
@@ -123,6 +128,70 @@ async function loadFiles(id){
   if(r.error){toast('Không đọc được danh sách tệp: '+r.error.message);return}
   R.files[id]=r.data.map(rowToFile);render();refreshDrawer();
 }
+
+
+/* ---------- Báo cáo (chỉ Quản trị) ---------- */
+const RP={files:null,days:30};
+async function loadReportFiles(){if(!R.sb)return;const r=await R.sb.from('files').select('client_id,code,created_at,created_by').order('created_at',{ascending:false}).limit(5000);RP.files=r.error?[]:r.data;if(S.view==='report')render()}
+function reportData(){
+  const now=Date.now(),D=864e5,since=now-RP.days*D,files=RP.files||[];
+  const t=x=>Date.parse(x||'')||0;
+  const people=(R.people||[]).filter(u=>u.role!=='admin');
+  const row=()=>({cases:0,req:0,rcv:0,approved:0,review:0,missing:0,uploads:0,approvals:0});
+  const by={};people.forEach(u=>by[u.email]=row());const none=row();
+  R.clients.forEach(c=>{const s=stats(c),as=assigneesOf(c);const tgt=as.length?as.map(e=>by[e]||(by[e]=row())):[none];
+    tgt.forEach(r=>{r.cases++;r.req+=s.req;r.rcv+=s.rcv;r.approved+=s.approved;r.review+=s.review;r.missing+=s.missing})});
+  files.forEach(f=>{if(t(f.created_at)>=since){const e=String(f.created_by||'').toLowerCase();if(by[e])by[e].uploads++}});
+  const approvals=[];R.clients.forEach(c=>Object.entries(c.docs||{}).forEach(([k,x])=>{if(x&&x.s==='approved'&&x.at)approvals.push({c,code:k,at:t(x.at),by:String(x.by||'').toLowerCase()})}));
+  approvals.forEach(a=>{if(a.at>=since&&by[a.by])by[a.by].approvals++});
+  const tot=R.clients.reduce((o,c)=>{const s=stats(c);o.req+=s.req;o.approved+=s.approved;o.review+=s.review;o.missing+=s.missing;o.rcv+=s.rcv;if(!s.missing&&!s.review)o.done++;return o},{req:0,approved:0,review:0,missing:0,rcv:0,done:0});
+  const steps=STEPS.map((x,i)=>({t:x.t,n:R.clients.filter(c=>(c.step||1)===i+1).length}));
+  const weeks=[];for(let i=7;i>=0;i--){const end=now-i*7*D,start=end-7*D;weeks.push({label:fmtDate(new Date(start+D).toISOString()).slice(0,5),up:files.filter(f=>t(f.created_at)>=start&&t(f.created_at)<end).length,ap:approvals.filter(a=>a.at>=start&&a.at<end).length})}
+  const attn=[];R.clients.forEach(c=>{const s=stats(c),why=[];const upd=t(c.updatedAt);
+    if(!assigneesOf(c).length)why.push(['bad','Chưa phân công']);
+    if(s.missing&&upd&&now-upd>14*D)why.push(['warn',`Không cập nhật ${Math.floor((now-upd)/D)} ngày`]);
+    const old=Object.values(c.docs||{}).filter(x=>x&&x.s==='review'&&x.at&&now-t(x.at)>7*D).length;if(old)why.push(['warn',`${old} tài liệu chờ duyệt quá 7 ngày`]);
+    if(why.length)attn.push({c,why})});
+  return {by,none,people,tot,steps,weeks,attn,uploads:files.filter(f=>t(f.created_at)>=since).length,approvals:approvals.filter(a=>a.at>=since).length};
+}
+function vReport(){
+  if(!RP.files){$('view').innerHTML=`<div class="card empty"><b>Đang tải số liệu…</b></div>`;loadReportFiles();return}
+  const d=reportData(),pct=(a,b)=>b?Math.round(a/b*100):0;
+  const rows=[...d.people.map(u=>({u,r:d.by[u.email]}))].sort((a,b)=>b.r.cases-a.r.cases);
+  const maxW=Math.max(1,...d.weeks.map(w=>w.up+w.ap)),maxS=Math.max(1,...d.steps.map(x=>x.n));
+  $('view').innerHTML=`
+  <div class="phead"><div><div class="eyebrow">Quản trị · Báo cáo</div><h1>Báo cáo &amp; đánh giá kết quả</h1><p>Tiến độ hồ sơ L-1A → EB-1C, khối lượng xử lý của từng Nhân viên / Luật sư và các hồ sơ cần chú ý.</p></div>
+    <div class="actions"><div class="seg rp-seg">${[7,30,90].map(n=>`<button data-rpdays="${n}" aria-pressed="${RP.days===n}">${n} ngày</button>`).join('')}</div><button class="btn" data-act="reportCsv">${I('sheet')}Xuất CSV</button></div></div>
+  <div class="kpis">
+    <div class="kpi"><div class="eyebrow">Hồ sơ</div><div class="v num">${R.clients.length}</div><div class="s">${d.tot.done} hồ sơ đã đủ & duyệt hết</div></div>
+    <div class="kpi"><div class="eyebrow">Hoàn thiện</div><div class="v num">${pct(d.tot.approved,d.tot.req)}%</div><div class="s">${d.tot.approved}/${d.tot.req} tài liệu đã duyệt</div></div>
+    <div class="kpi"><div class="eyebrow">Tệp nhận ${RP.days} ngày</div><div class="v num">${d.uploads}</div><div class="s">${d.approvals} tài liệu được duyệt cùng kỳ</div></div>
+    <div class="kpi"><div class="eyebrow">Cần chú ý</div><div class="v num">${d.attn.length}</div><div class="s">${d.tot.review} tài liệu đang chờ duyệt</div></div>
+  </div>
+  <section class="card"><div class="card-h"><h3>Theo người phụ trách</h3><span class="dnote sp">Tệp tải lên &amp; duyệt tính trong ${RP.days} ngày gần nhất</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Người phụ trách</th><th class="r">Hồ sơ</th><th>Hoàn thiện</th><th class="r">Đã nhận</th><th class="r">Chờ duyệt</th><th class="r">Còn thiếu</th><th class="r">Tệp tải lên</th><th class="r">Đã duyệt</th></tr></thead><tbody>
+    ${rows.map(({u,r})=>`<tr><td><div class="who"><div class="av">${esc(initials(u.name||u.email))}</div><div><b>${esc(u.name||u.email)}</b><div class="dnote">${u.role==='lawyer'?'Luật sư':'Nhân viên'}</div></div></div></td><td class="r num">${r.cases}</td><td><div class="rp-bar"><i style="width:${pct(r.approved,r.req)}%"></i></div><div class="dnote num">${pct(r.approved,r.req)}% · ${r.approved}/${r.req}</div></td><td class="r num">${r.rcv}</td><td class="r num">${r.review||'—'}</td><td class="r num">${r.missing?`<span class="count-bad">${r.missing}</span>`:'—'}</td><td class="r num">${u.role==='lawyer'?'—':r.uploads}</td><td class="r num">${r.approvals||'—'}</td></tr>`).join('')}
+    ${d.none.cases?`<tr><td><b style="color:var(--warn)">Chưa phân công</b></td><td class="r num">${d.none.cases}</td><td><div class="rp-bar"><i style="width:${pct(d.none.approved,d.none.req)}%"></i></div><div class="dnote num">${pct(d.none.approved,d.none.req)}%</div></td><td class="r num">${d.none.rcv}</td><td class="r num">${d.none.review||'—'}</td><td class="r num">${d.none.missing?`<span class="count-bad">${d.none.missing}</span>`:'—'}</td><td class="r">—</td><td class="r">—</td></tr>`:''}
+    </tbody></table></div></section>
+  <div class="rp-grid">
+    <section class="card"><div class="card-h"><h3>Hoạt động 8 tuần gần nhất</h3><span class="sp rp-legend"><i class="u"></i>Tệp tải lên <i class="a"></i>Tài liệu được duyệt</span></div>
+      <div class="card-b"><div class="rp-cols">${d.weeks.map(w=>`<div class="rp-col" title="Tuần từ ${w.label}: ${w.up} tệp, ${w.ap} duyệt"><div class="stack" style="height:${Math.round((w.up+w.ap)/maxW*100)}%"><i class="a" style="flex:${w.ap}"></i><i class="u" style="flex:${w.up}"></i></div><b class="num">${w.up+w.ap||''}</b><span>${w.label}</span></div>`).join('')}</div></div></section>
+    <section class="card"><div class="card-h"><h3>Hồ sơ theo bước lộ trình</h3></div>
+      <div class="card-b rp-steps">${d.steps.map((x,i)=>`<div class="rp-step"><span class="n">${i+1}</span><span class="l">${esc(x.t)}</span><div class="rp-bar big"><i style="width:${Math.round(x.n/maxS*100)}%"></i></div><b class="num">${x.n}</b></div>`).join('')}</div></section>
+  </div>
+  <section class="card"><div class="card-h"><h3>Hồ sơ cần chú ý</h3><span class="dnote sp">${d.attn.length} hồ sơ</span></div>
+    ${d.attn.length?`<div class="tbl-wrap"><table><thead><tr><th>Khách hàng</th><th>Mã hồ sơ</th><th>Phụ trách</th><th>Lý do</th></tr></thead><tbody>${d.attn.map(({c,why})=>`<tr class="click" data-open="${esc(c.id)}"><td><b>${esc(c.name||'—')}</b><div class="dnote">${esc(c.company||'')}</div></td><td class="mono">${esc(c.id)}</td><td>${esc(assigneesOf(c).map(personName).join(', ')||'—')}</td><td>${why.map(([k,m])=>`<span class="pill ${k==='bad'?'s-missing':'s-review'}">${esc(m)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty"><b>Không có hồ sơ nào cần chú ý</b>Mọi hồ sơ đều đã phân công và đang được cập nhật đều.</div>`}
+  </section>`;
+}
+function reportCsv(){
+  const d=reportData(),pct=(a,b)=>b?Math.round(a/b*100):0;
+  const L=[['Người phụ trách','Vai trò','Hồ sơ','Tài liệu bắt buộc','Đã nhận','Đã duyệt','Hoàn thiện %','Chờ duyệt','Còn thiếu',`Tệp tải lên ${RP.days} ngày`,`Đã duyệt ${RP.days} ngày`]];
+  d.people.forEach(u=>{const r=d.by[u.email];L.push([u.name||u.email,u.role==='lawyer'?'Luật sư':'Nhân viên',r.cases,r.req,r.rcv,r.approved,pct(r.approved,r.req),r.review,r.missing,r.uploads,r.approvals])});
+  if(d.none.cases)L.push(['Chưa phân công','',d.none.cases,d.none.req,d.none.rcv,d.none.approved,pct(d.none.approved,d.none.req),d.none.review,d.none.missing,'','']);
+  const csv='﻿'+L.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`Bao-cao-ho-so-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-rpdays]');if(b){RP.days=+b.dataset.rpdays;render()}});
 
 /* ---------- chuông thông báo: tệp mới do người khác tải lên ---------- */
 const BELL={items:[],seen:0,open:false,names:{},timer:null,poll:null,known:new Set()};
@@ -279,7 +348,7 @@ async function deleteFile(c,f){
 }
 async function createClient(id,data){
   const now=new Date().toISOString();
-  const r=await R.sb.from('clients').insert({id,data:Object.assign(data,{program:'L-1A',step:1,docs:defaultDocs(data.opt),pay:{}}),log:[{t:now,by:R.email,m:'Tạo hồ sơ'}]});
+  const r=await R.sb.from('clients').insert({id,data:Object.assign(data,{program:'L-1A',step:1,docs:defaultDocs(data.opt),pay:{},assignees:R.isAdmin?[]:[R.email]}),log:[{t:now,by:R.email,m:'Tạo hồ sơ'}]});
   if(r.error)return /duplicate/i.test(r.error.message)?'Mã '+id+' đã tồn tại.':dbErr(r.error);
   await loadClients();return null;
 }
@@ -432,16 +501,16 @@ IDC VIETNAM`;
 /* ---------- rendering ---------- */
 function navs(){
   const n=R.clients.length,logged=!!R.email&&!R.err;
-  $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:''):'';
+  $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'&&S.view!=='report'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="report" aria-current="${S.view==='report'}">${I('chart')}Báo cáo</button><button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:''):'';
   $('nav-prog').innerHTML=`<button data-go="clients" aria-current="false">${I('folder')}L-1A → EB-1C<span class="ct">${logged?n:''}</span></button>`+['EB-5','E-2','Du học Mỹ'].map(p=>`<button disabled>${I('folder')}${p}<span class="soon">Sắp có</span></button>`).join('');
-  $('nav-mobile').innerHTML=`<div class="logo">IDC</div>`+(logged?`<button class="chip" data-go="clients" aria-pressed="${S.view!=='admin'}">Hồ sơ</button>${R.isAdmin?`<button class="chip" data-go="admin" aria-pressed="${S.view==='admin'}">Quản trị</button>`:''}<button class="chip" data-act="logout">Đăng xuất</button>`:'');
+  $('nav-mobile').innerHTML=`<div class="logo">IDC</div>`+(logged?`<button class="chip" data-go="clients" aria-pressed="${S.view!=='admin'&&S.view!=='report'}">Hồ sơ</button>${R.isAdmin?`<button class="chip" data-go="report" aria-pressed="${S.view==='report'}">Báo cáo</button><button class="chip" data-go="admin" aria-pressed="${S.view==='admin'}">Quản trị</button>`:''}<button class="chip" data-act="logout">Đăng xuất</button>`:'');
   $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.role==='lawyer'?'Luật sư · xem & duyệt tài liệu':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><button class="btn sm" data-act="logout" style="margin-top:6px">Đăng xuất</button>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
 }
 function crumbs(){
   const c=S.client&&getC(S.client);
   $('crumbs').innerHTML=`<span>Hồ sơ định cư</span><span class="sep">/</span>`+(S.view==='case'&&c?`<button class="row-link" data-go="clients" style="font-weight:500;color:var(--muted)">L-1A → EB-1C</button><span class="sep">/</span><b class="mono">${esc(c.id)}</b>`:`<b>L-1A → EB-1C</b>`);
 }
-function render(){navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
+function render(){navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='report'&&R.isAdmin){vReport();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
 
 function vEmpty(){
   if(!R.ready)return `<div class="card empty"><b>Đang tải dữ liệu…</b></div>`;
@@ -533,7 +602,7 @@ function vClients(){
         <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
         <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
         <td class="r num">${s.review||'—'}</td>
-        <td>${esc(c.staff||'—')}</td>
+        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}</td>
         <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
     </table></div>
   </section>`:vEmpty()}`;
@@ -587,7 +656,8 @@ function vCase(){
   <section class="card">
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
-        <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>IDC VIETNAM</span><span>Chuyên viên: ${esc(c.staff||'chưa phân công')}</span><span>${esc(optLabel(c.opt))}</span></div>
+        <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>IDC VIETNAM</span><span>Chuyên viên: ${esc(c.staff||'—')}</span><span>${esc(optLabel(c.opt))}</span></div>
+        <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${R.isAdmin?`<button class="btn sm" data-act="assign">${I('edit',13)}Phân công</button>`:''}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
@@ -628,6 +698,10 @@ function drawRender(soft){
     const id=DR.arg;
     signedUrl(f).then(url=>{if(!DR||DR.arg!==id)return;$('dr-open').href=url;
       body.innerHTML=(f.type||'').startsWith('image/')?`<img class="preview-img" src="${esc(url)}" alt="${esc(f.name)}">`:`<iframe class="pdf-frame" src="${esc(url)}" title="${esc(f.name)}"></iframe><div class="dnote" style="text-align:center">Nếu khung trống, bấm “Mở tab mới” hoặc “Tải xuống”.</div>`}).catch(e=>{body.innerHTML=`<div class="empty"><b>Không mở được tệp</b>${esc(e.message)}</div>`});
+  } else if(DR.kind==='assign'){
+    const cur=new Set(assigneesOf(c));const grp=(role,label)=>{const l=(R.people||[]).filter(u=>u.role===role);return `<div class="box"><h4>${label}</h4>${l.length?l.map(u=>`<label class="asg"><input type="checkbox" data-asg="${esc(u.email)}" ${cur.has(u.email)?'checked':''}><span><b>${esc(u.name||u.email)}</b><em>${esc(u.email)}</em></span></label>`).join(''):'<div class="dnote">Chưa có tài khoản nào với quyền này.</div>'}</div>`};
+    $('dr-eb').textContent=`Hồ sơ ${c.id}`;$('dr-title').textContent='Phân công xử lý hồ sơ';$('dr-acts').innerHTML=`<button class="icon-btn" data-act="close" aria-label="Đóng">${I('x')}</button>`;
+    body.innerHTML=`<p class="dnote" style="margin:0 0 4px">Nhân viên và Luật sư <b>chỉ thấy và xử lý những hồ sơ được phân cho mình</b>. Quản trị luôn thấy tất cả. Người được phân sẽ nhận email khi hồ sơ có tệp mới.</p>${grp('staff','Nhân viên')}${grp('lawyer','Luật sư')}<div style="display:flex;gap:8px"><button class="btn primary" data-act="saveAssign">Lưu phân công</button><button class="btn" data-act="close">Huỷ</button></div>`;
   } else if(DR.kind==='client'){
     const c0=DR.arg==='new'?null:c;const v=k=>esc(c0?c0[k]||'':'');
     const nextId=(()=>{let m=0;R.clients.forEach(x=>{const mm=/(\d+)$/.exec(String(x.id));const n=mm?parseInt(mm[1],10):0;if(n>m)m=n});return 'L1A-'+String(m+1).padStart(4,'0')})();
@@ -674,7 +748,7 @@ let upTarget=null,armed=null;
 document.addEventListener('click',async e=>{
   const t=e.target.closest('button,[data-open],[data-drop],tr[data-doc]');if(!t)return;
   const ds=t.dataset;const c=getC(S.client);
-  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin')loadStaff();render();window.scrollTo(0,0);return}
+  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin')loadStaff();if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
   if(ds.staffdel){const r=await R.sb.from('staff').delete().eq('email',ds.staffdel);if(r.error)toast(dbErr(r.error));else{toast('Đã gỡ '+ds.staffdel);loadStaff()}return}
   if(ds.docdel!==undefined){t.closest('tr').remove();return}
   if(ds.open){S.view='case';S.client=ds.open;S.tab=stats(getC(ds.open)).missing?'missing':'review';S.q='';$('q').value='';setHash();render();window.scrollTo(0,0);return}
@@ -698,6 +772,9 @@ document.addEventListener('click',async e=>{
     case 'saveProgram':{const p=readProgramForm();const codes=p.docs.map(d=>d.code);if(new Set(codes).size!==codes.length){toast('Mã tài liệu bị trùng.');return}const r=await R.sb.from('settings').upsert({key:'program_l1a',value:p,updated_by:R.email});if(r.error){toast(dbErr(r.error));return}applyProgram(p);toast('Đã lưu cấu hình');render();return}
     case 'newClient':return openDrawer('client','new');
     case 'editClient':return openDrawer('client','edit');
+    case 'assign':return openDrawer('assign');
+    case 'reportCsv':return reportCsv();
+    case 'saveAssign':{const list=[...document.querySelectorAll('[data-asg]')].filter(x=>x.checked).map(x=>x.dataset.asg);if(await updateClient(c,{assignees:list},'Phân công: '+(list.length?list.map(personName).join(', '):'bỏ phân công'))){closeDrawer();toast('Đã lưu phân công')}return}
     case 'exportExcel':return exportExcel();
     case 'zip':return zipCase(c);
     case 'receipt':return openReceipt(c);
@@ -725,4 +802,4 @@ $('file').addEventListener('change',e=>{const c=getC(S.client);if(c&&upTarget)up
 $('scrim').addEventListener('click',closeDrawer);
 $('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
 function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.client:S.view))}catch(_){}}
-(function boot(){const h=(location.hash||'').slice(1);if(h==='admin')S.view='admin';else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
+(function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();

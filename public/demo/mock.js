@@ -44,14 +44,14 @@
   const clients = [
     { id: 'L1A-0101', created_at: iso(120), updated_at: iso(1), data: {
       program: 'L-1A', name: 'Nguyễn Minh Khang', company: 'Công ty TNHH Thực phẩm Sao Mai', companyEn: 'Sao Mai Foods Co., Ltd', mst: '0312345678',
-      industry: 'Chế biến thực phẩm', office: 'TP.HCM', staff: 'Lan Anh', opt: 'B', us: 'Sao Mai Foods USA LLC', state: 'California', deps: 'Vợ + 2 con',
+      industry: 'Chế biến thực phẩm', office: 'TP.HCM', staff: 'Lan Anh', assignees: ['lananh@idcvietnam.vn','luatsu@idcvietnam.vn'], opt: 'B', us: 'Sao Mai Foods USA LLC', state: 'California', deps: 'Vợ + 2 con',
       opened: '2026-06-02', charter: '15.000.000.000 VNĐ', reg: 'Lần đầu 2014, thay đổi lần 6 năm 2025', owners: 'Nguyễn Minh Khang 70% · Lê Thu Hà 30%',
       addr: '12 Nguyễn Văn Trỗi, Phú Nhuận, TP.HCM', note: 'Khách ưu tiên nộp I-129 trong quý 4.', step: 2,
       pay: { d1: 19000, d2: 20000 },
       docs: docs('B', ['VN-01','VN-02','VN-03','VN-04','VN-05','VN-06','VN-07','VN-08','VN-09','VN-10','VN-11','VN-13','VN-15','AP-01','AP-02','AP-03','AP-04','US-01','US-02','US-03','US-04','US-07','US-08'], ['VN-12','US-05','US-09'], { 'VN-14': 'Chờ khách chuyển vốn đợt 2', 'AP-05': 'Đã nộp hồ sơ xin LLTP, hẹn ngày 20/10' }) } },
     { id: 'L1A-0102', created_at: iso(60), updated_at: iso(0.2), data: {
       program: 'L-1A', name: 'Phạm Thị Thanh Hương', company: 'Công ty CP Nội thất Gỗ Việt', companyEn: 'Go Viet Furniture JSC', mst: '0109876543',
-      industry: 'Sản xuất nội thất', office: 'Hà Nội', staff: 'Quang Huy', opt: 'A', us: 'Go Viet Home Inc.', state: 'Texas', deps: 'Chồng + 1 con',
+      industry: 'Sản xuất nội thất', office: 'Hà Nội', staff: 'Quang Huy', assignees: ['quanghuy@idcvietnam.vn'], opt: 'A', us: 'Go Viet Home Inc.', state: 'Texas', deps: 'Chồng + 1 con',
       opened: '2026-08-11', charter: '8.000.000.000 VNĐ', reg: 'Lần đầu 2017', owners: 'Phạm Thị Thanh Hương 55% · Đỗ Văn Nam 45%',
       addr: 'KCN Quang Minh, Mê Linh, Hà Nội', note: '', step: 1, pay: { d1: 19000 },
       docs: docs('A', ['VN-01','VN-02','VN-03','VN-04','VN-15','AP-01'], ['VN-05','VN-06','VN-08','AP-03'], { 'VN-11': 'Thiếu sao kê tháng 11–12/2025' }) } },
@@ -63,7 +63,7 @@
       docs: docs('?', ['VN-01'], ['VN-02','VN-15'], {}) } },
     { id: 'L1A-0104', created_at: iso(400), updated_at: iso(10), data: {
       program: 'L-1A', name: 'Võ Hoàng Yến', company: 'Công ty TNHH Cà phê Cao Nguyên Xanh', companyEn: 'Green Highland Coffee Co., Ltd', mst: '6001234567',
-      industry: 'Nông sản – cà phê', office: 'Buôn Ma Thuột', staff: 'Minh Tâm', opt: 'B', us: 'Green Highland Coffee LLC', state: 'Washington', deps: 'Chồng + 2 con',
+      industry: 'Nông sản – cà phê', office: 'Buôn Ma Thuột', staff: 'Minh Tâm', assignees: ['minhtam@idcvietnam.vn','luatsu@idcvietnam.vn'], opt: 'B', us: 'Green Highland Coffee LLC', state: 'Washington', deps: 'Chồng + 2 con',
       opened: '2025-09-05', charter: '20.000.000.000 VNĐ', reg: 'Lần đầu 2011', owners: 'Võ Hoàng Yến 60% · Võ Hoàng Long 40%',
       addr: '45 Lê Duẩn, TP. Buôn Ma Thuột, Đắk Lắk', note: 'Đã nhận visa L-1A, chuẩn bị I-140.', step: 4,
       pay: { d1: 19000, d2: 20000, d3: 15255, d4: 9000 },
@@ -85,7 +85,8 @@
     staff: [{ email: ME, name: 'Khách xem thử', role: 'admin', created_at: iso(30) },
             { email: 'lananh@idcvietnam.vn', name: 'Lan Anh', role: 'staff', notify: true, zalo_chat_id: '7391020458831', created_at: iso(30) },
             { email: 'quanghuy@idcvietnam.vn', name: 'Quang Huy', role: 'staff', created_at: iso(30) },
-            { email: 'bangiamdoc@idcvietnam.vn', name: 'Ban Giám đốc', role: 'viewer', created_at: iso(30) }],
+            { email: 'minhtam@idcvietnam.vn', name: 'Minh Tâm', role: 'staff', created_at: iso(30) },
+            { email: 'luatsu@idcvietnam.vn', name: 'LS. Ryan Yee', role: 'lawyer', created_at: iso(30) }],
     clients, files, settings: [{ key: 'notify', value: { enabled: true, from: 'IDC VIETNAM <thongbao@ditruidc.com>', portal: 'https://hoso.ditruidc.com', instant: [], digest: ['bangiamdoc@idcvietnam.vn'], email: true, zalo: true, zalo_groups: [] } }]
   };
 
