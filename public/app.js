@@ -1125,6 +1125,7 @@ document.addEventListener('change',e=>{const t=e.target;if(!t)return;
 document.addEventListener('click',e=>{if(S.colOpen&&!e.target.closest('.pg-cust')){S.colOpen=false;render()}});
 
 /* ---------- Trao đổi (chat) ---------- */
+const BOT_SVG=k=>'<svg class="bot" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="cbg$" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B9A30"/><stop offset="1" stop-color="#11541A"/></linearGradient><linearGradient id="cfc$" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E4EFE2"/></linearGradient></defs><circle cx="32" cy="32" r="32" fill="url(#cbg$)"/><path d="M15 33a17 17 0 0 1 34 0" fill="none" stroke="#F5C400" stroke-width="3.2" stroke-linecap="round"/><rect x="18.5" y="19" width="27" height="24" rx="9" fill="url(#cfc$)"/><rect x="22" y="24.5" width="20" height="11.5" rx="5.75" fill="#0E3D12"/><path d="M25.6 31.2q1.9-2.6 3.8 0M34.6 31.2q1.9-2.6 3.8 0" fill="none" stroke="#7CF29A" stroke-width="2.2" stroke-linecap="round"/><rect x="11.5" y="27.5" width="7.5" height="12.5" rx="3.75" fill="#F5C400"/><rect x="45" y="27.5" width="7.5" height="12.5" rx="3.75" fill="#F5C400"/><path d="M15.2 40q.6 7.2 9.8 7.2" fill="none" stroke="#F5C400" stroke-width="2.4" stroke-linecap="round"/><rect x="24.2" y="45.2" width="5.2" height="4" rx="2" fill="#F5C400"/><circle cx="45.5" cy="16.5" r="7" fill="#FFFFFF"/><path d="M41.5 21.5l-1.2 3 3.4-1.6z" fill="#FFFFFF"/><circle cx="42.6" cy="16.5" r="1.2" fill="#17631A"/><circle cx="45.5" cy="16.5" r="1.2" fill="#17631A"/><circle cx="48.4" cy="16.5" r="1.2" fill="#17631A"/></svg>'.split('$').join(k);
 const CH={min:false,saveFor:null,saving:false,pending:[],emoji:false,urls:{},sending:false,open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
 const chatTot=()=>Object.values(CH.unread).reduce((a,b)=>a+b,0);
 function chatRoomOf(kind,key){return CH.rooms.find(r=>r.kind===kind&&(kind==='case'?r.client_id===key:false))}
@@ -1152,7 +1153,7 @@ function chatLive(m){
   if(CH.msgs[m.room_id]&&!CH.msgs[m.room_id].some(x=>x.id===m.id))CH.msgs[m.room_id].push(m);
   const mine=String(m.author).toLowerCase()===R.email;
   if(CH.open&&!CH.min&&CH.room===m.room_id&&!document.hidden){if(!mine)R.sb.rpc('chat_mark_read',{p_room:m.room_id});chatRender(true);return}
-  if(!mine){CH.unread[m.room_id]=(CH.unread[m.room_id]||0)+1;chatBadge();
+  if(!mine){CH.unread[m.room_id]=(CH.unread[m.room_id]||0)+1;chatBadge();const fb=document.getElementById('chatfab');if(fb&&(!CH.open||CH.min)){fb.classList.remove('ping');void fb.offsetWidth;fb.classList.add('ping')}
     const ment=(m.mentions||[]).map(e=>String(e).toLowerCase()).includes(R.email);
     const msg=`${personName(m.author)}${ment?' nhắc bạn':''} · ${chatTitle(room)}: ${String(m.body).slice(0,90)}`;
     if(document.hidden&&('Notification' in window)&&Notification.permission==='granted'){try{const n=new Notification('IDC Portal · Tin nhắn',{body:msg,tag:'idc-chat-'+m.room_id});n.onclick=()=>{window.focus();chatOpenRoom(m.room_id);n.close()}}catch(_){}}
@@ -1162,7 +1163,7 @@ function chatLive(m){
 function chatBadge(){const f=document.getElementById('chatfab');if(!f)return;const n=chatTot();f.hidden=!(R.email&&R.role&&!R.err);const b=f.querySelector('.cf-n');b.textContent=n>99?'99+':String(n);b.hidden=!n;f.setAttribute('aria-label',n?`Trao đổi: ${n} tin chưa đọc`:'Trao đổi')}
 function ensureChatDom(){
   if(document.getElementById('chatfab'))return;
-  const f=document.createElement('button');f.type='button';f.id='chatfab';f.className='chatfab';f.hidden=true;f.innerHTML=`${I('chat',22)}<span class="cf-l">Trao đổi</span><span class="cf-n" hidden></span>`;document.body.appendChild(f);
+  const f=document.createElement('button');f.type='button';f.id='chatfab';f.className='chatfab';f.hidden=true;f.innerHTML=`${BOT_SVG('f')}<span class="cf-l">Trao đổi</span><span class="cf-n" hidden></span>`;f.title='Trao đổi';document.body.appendChild(f);
   const p=document.createElement('section');p.id='chatpanel';p.className='chatpanel';p.hidden=true;p.setAttribute('aria-label','Trao đổi');document.body.appendChild(p);
 }
 const chatTime=t=>{const d=new Date(t),n=new Date(),p=x=>String(x).padStart(2,'0');return d.toDateString()===n.toDateString()?`${p(d.getHours())}:${p(d.getMinutes())}`:`${p(d.getDate())}/${p(d.getMonth()+1)}`};
@@ -1187,7 +1188,7 @@ function chatListHTML(){
     body=dms.map(r=>{const o=(r.members||[]).find(e=>e!==R.email);return item(r.id,personName(o),'',r.last_text?`${r.last_by===R.email?'Bạn: ':''}${r.last_text}`:'',r.last_text?r.last_at:'',un(r.id),{cls:'dm',t:esc(initials(personName(o)))},`data-chroom="${r.id}"`)}).join('')+
       (others.length?`<div class="ch-sec">Bắt đầu nhắn riêng</div>`+others.map(p=>item(p.email,personName(p.email),ROLE_VI[p.role]||'','','',0,{cls:'dm off',t:esc(initials(personName(p.email)))},`data-chdm="${esc(p.email)}"`)).join(''):'');
   }
-  return `<div class="ch-h"><b>Trao đổi${chatTot()?` <span class="ch-n">${chatTot()}</span>`:''}</b><button class="icon-btn" data-chmin aria-label="${CH.min?'Mở rộng':'Thu nhỏ'}" title="${CH.min?'Mở rộng':'Thu nhỏ'}">${I(CH.min?'chu':'minus',18)}</button><button class="icon-btn" data-chclose aria-label="Tắt" title="Tắt">${I('x')}</button></div><div class="ch-tabs" role="tablist">${tabs}</div>${CH.err?`<div class="banner warn" style="margin:10px">${I('alert')}<div>Chưa cài phần Trao đổi trên Supabase (chạy supabase/chat.sql). <span class="dnote">${esc(CH.err)}</span></div></div>`:''}<div class="ch-list">${body}</div>`;
+  return `<div class="ch-h"><span class="ch-bot">${BOT_SVG('h')}</span><b>Trao đổi${chatTot()?` <span class="ch-n">${chatTot()}</span>`:''}</b><button class="icon-btn" data-chmin aria-label="${CH.min?'Mở rộng':'Thu nhỏ'}" title="${CH.min?'Mở rộng':'Thu nhỏ'}">${I(CH.min?'chu':'minus',18)}</button><button class="icon-btn" data-chclose aria-label="Tắt" title="Tắt">${I('x')}</button></div><div class="ch-tabs" role="tablist">${tabs}</div>${CH.err?`<div class="banner warn" style="margin:10px">${I('alert')}<div>Chưa cài phần Trao đổi trên Supabase (chạy supabase/chat.sql). <span class="dnote">${esc(CH.err)}</span></div></div>`:''}<div class="ch-list">${body}</div>`;
 }
 function chatGroupForm(r){
   const sel=new Set(r?r.members:[R.email]);
@@ -1215,7 +1216,7 @@ function chatThreadHTML(){
     <input type="file" id="ch-file" multiple hidden>`;
 }
 function chatRender(scroll){
-  chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open;p.classList.toggle('min',!!CH.min);const fab=document.getElementById('chatfab');if(fab)fab.classList.toggle('behind',CH.open);if(!CH.open)return;
+  chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open||CH.min;const fab=document.getElementById('chatfab');if(fab){fab.classList.toggle('behind',CH.open&&!CH.min);fab.classList.toggle('paused',CH.open&&CH.min)}if(!CH.open||CH.min)return;
   const ta=document.getElementById('ch-text');const draft=ta?ta.value:'';const hadFocus=document.activeElement===ta;const box=document.getElementById('ch-msgs');const atBottom=!box||box.scrollHeight-box.scrollTop-box.clientHeight<60;
   p.innerHTML=CH.room?chatThreadHTML():chatListHTML();
   const t2=document.getElementById('ch-text');if(t2){t2.value=draft;if(hadFocus||scroll)t2.focus();chatGrow(t2)}

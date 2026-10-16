@@ -708,3 +708,25 @@ html[lang="en"] .dept-en{display:none}
 .ch-h .ch-n{vertical-align:2px;margin-left:4px}
 @media (max-width:640px){.chatpanel.min{top:auto;left:auto;right:12px;bottom:12px;width:min(320px,calc(100vw - 24px));border-radius:14px}}
 .chatpanel.min{bottom:22px}
+/* chat: nút robot */
+.chatfab{width:64px;height:64px;padding:0;border-radius:50%;background:none;box-shadow:0 14px 30px -10px rgba(16,70,20,.7),0 0 0 4px rgba(255,255,255,.9);justify-content:center;transition:transform .18s}
+.chatfab:hover{background:none;transform:translateY(-2px) scale(1.04)}
+.chatfab .bot{width:64px;height:64px;display:block}
+.chatfab .cf-l{position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);white-space:nowrap;background:#0F1F0F;color:#fff;font-size:12.5px;font-weight:600;padding:6px 10px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s}
+.chatfab:hover .cf-l,.chatfab:focus-visible .cf-l{opacity:1}
+.chatfab .cf-n{top:-2px;right:-2px}
+.chatfab.paused::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(23,99,26,.55)}
+.chatfab.ping{animation:botping .9s ease 2}
+@keyframes botping{0%,100%{transform:none}30%{transform:translateY(-8px) rotate(-6deg)}60%{transform:translateY(0) rotate(5deg)}}
+.ch-bot{display:inline-flex;width:30px;height:30px;flex:none}.ch-bot .bot{width:30px;height:30px}
+.ch-h>.ch-bot+b{margin-left:2px}
+@media (max-width:640px){.chatfab{width:56px;height:56px;right:14px;bottom:14px}.chatfab .bot{width:56px;height:56px}}
+@media (prefers-reduced-motion:reduce){.chatfab.ping{animation:none}.chatfab{transition:none}}
+.chatpanel[hidden],.chatfab[hidden]{display:none!important}
+/* nút robot + chữ "Trao đổi" luôn hiện */
+.chatfab{width:auto;height:60px;padding:4px 20px 4px 4px;gap:10px;border-radius:999px;background:linear-gradient(180deg,#1E7A21,#11541A);box-shadow:0 14px 30px -10px rgba(16,70,20,.7),0 0 0 3px rgba(255,255,255,.95)}
+.chatfab:hover{background:linear-gradient(180deg,#22862A,#0E4A22)}
+.chatfab .bot{width:52px;height:52px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.18))}
+.chatfab .cf-l{position:static;transform:none;opacity:1;background:none;padding:0;font-size:15px;font-weight:800;letter-spacing:.01em;color:#fff;pointer-events:none}
+.chatfab.paused::after{border-radius:999px}
+@media (max-width:640px){.chatfab{width:auto;height:52px;padding:3px 14px 3px 3px}.chatfab .bot{width:46px;height:46px}.chatfab .cf-l{display:inline;font-size:13.5px}}
