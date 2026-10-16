@@ -438,3 +438,5 @@ label.asg:has(input:checked){border-color:#17631A;background:#F1F8EF;box-shadow:
 .todo li{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #F6E3A6;border-radius:10px;padding:8px 12px}
 .asg-date{border:1px solid var(--border-strong);border-radius:8px;padding:6px 10px;background:#fff;font:inherit}
 @media (max-width:1100px){.rp-grid3{grid-template-columns:1fr}}
+.fsec{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#17631A;border-bottom:1px solid #DCE8D7;padding:10px 0 4px;margin-top:4px}
+.fld select{width:100%}

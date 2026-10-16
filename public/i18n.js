@@ -73,7 +73,7 @@
     'Đăng ký doanh nghiệp': 'Business registration', 'Đăng ký DN': 'Business registration',
     'Chủ sở hữu / thành viên': 'Owners / members', 'Chủ sở hữu / thành viên góp vốn': 'Owners / contributing members',
     'Trụ sở': 'Head office', 'Ngành': 'Industry', 'Phương án': 'Investment option', 'Phương án đầu tư': 'Investment option',
-    'Pháp nhân tại Mỹ': 'U.S. entity', 'Bang': 'State', 'Người phụ thuộc': 'Dependents', 'Ngày mở hồ sơ': 'Case opened', 'Ngày mở': 'Opened',
+    'Pháp nhân tại Mỹ': 'U.S. entity', 'Bang': 'State', 'Công ty tại Mỹ': 'U.S. company', 'Thông tin khác': 'Other information', 'Pháp nhân tại Mỹ (tên công ty)': 'U.S. entity (company name)', '— Chọn bang —': '— Select a state —', 'Hay dùng cho L-1A': 'Common for L-1A', 'Tất cả các bang': 'All states', 'Địa chỉ công ty tại Mỹ (số nhà, đường, suite)': 'U.S. company address (street, suite)', 'Thành phố (City)': 'City', 'Mã ZIP': 'ZIP code', 'Địa chỉ tại Mỹ': 'U.S. address', 'Người phụ thuộc': 'Dependents', 'Ngày mở hồ sơ': 'Case opened', 'Ngày mở': 'Opened',
     'Chuyên viên phụ trách': 'Case officer', 'Ghi chú hồ sơ': 'Case notes', 'Mã hồ sơ': 'Case ID', 'Mã hồ sơ *': 'Case ID *', 'Mã HS': 'Case ID',
     'Hồ sơ mới': 'New case', 'Thêm hồ sơ khách hàng': 'Add client case', 'Sửa thông tin hồ sơ': 'Edit case details',
     'Tạo hồ sơ': 'Create case', 'Lưu thay đổi': 'Save changes', 'Huỷ': 'Cancel',

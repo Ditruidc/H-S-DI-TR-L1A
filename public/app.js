@@ -53,6 +53,10 @@ let DOCS=DEFAULT_DOCS.slice(),DOC=Object.fromEntries(DOCS.map(d=>[d.code,d]));
 let STEPS=[{t:'Thẩm định & chứng từ',d:'2–4 tuần'},{t:'Nộp I-129 · Phỏng vấn',d:'5–9 tháng'},{t:'Nhận visa L-1A',d:'≥ 12 tháng'},{t:'I-140 · I-485',d:'12–24 tháng'},{t:'Thẻ xanh EB-1C',d:'Thẻ 10 năm'}];
 let PAY=[{k:'d1',n:'Đợt 1',w:'Khi ký hợp đồng & mở hồ sơ',a:19000},{k:'d2',n:'Đợt 2',w:'Khi nộp I-129',a:20000},{k:'d3',n:'Đợt 3',w:'Khi nhận visa L-1A',a:15255},{k:'d4',n:'Đợt 4',w:'Khi nộp I-140 / I-485',a:18245},{k:'d5',n:'Đợt 5',w:'Sau khi nhận thẻ xanh',a:5000}];
 const ST={missing:['Còn thiếu','s-missing'],review:['Chờ duyệt','s-review'],approved:['Đã duyệt','s-approved'],na:['Không áp dụng','s-na']};
+const US_STATES=[['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['DC','District of Columbia'],['FL','Florida'],['GA','Georgia'],['HI','Hawaii'],['ID','Idaho'],['IL','Illinois'],['IN','Indiana'],['IA','Iowa'],['KS','Kansas'],['KY','Kentucky'],['LA','Louisiana'],['ME','Maine'],['MD','Maryland'],['MA','Massachusetts'],['MI','Michigan'],['MN','Minnesota'],['MS','Mississippi'],['MO','Missouri'],['MT','Montana'],['NE','Nebraska'],['NV','Nevada'],['NH','New Hampshire'],['NJ','New Jersey'],['NM','New Mexico'],['NY','New York'],['NC','North Carolina'],['ND','North Dakota'],['OH','Ohio'],['OK','Oklahoma'],['OR','Oregon'],['PA','Pennsylvania'],['RI','Rhode Island'],['SC','South Carolina'],['SD','South Dakota'],['TN','Tennessee'],['TX','Texas'],['UT','Utah'],['VT','Vermont'],['VA','Virginia'],['WA','Washington'],['WV','West Virginia'],['WI','Wisconsin'],['WY','Wyoming'],['PR','Puerto Rico']];
+const POPULAR_STATES=['CA','TX','NY','FL','WA','NJ','GA','IL','DE','NV'];
+const stateLabel=v=>{if(!v)return'';const f=US_STATES.find(([k,n])=>k===v||n.toLowerCase()===String(v).toLowerCase());return f?`${f[1]} (${f[0]})`:v};
+const usAddrOf=c=>[c.usAddr,c.usCity,[stateLabel(c.state),c.usZip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
 const OFFICES=['TP.HCM','Hà Nội','Đà Nẵng','Buôn Ma Thuột','Hoa Kỳ'];
 const OK_TYPES={'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
 const EXT_TYPE={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'};
@@ -528,11 +532,11 @@ function openReceipt(c,type){const w=window.open('/bienban.html?id='+encodeURICo
 function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
-  const kh=[['Mã HS','Đương đơn','Công ty VN','Tên công ty (EN)','Mã số DN','Ngành','Văn phòng','Phương án','Bước','Chuyên viên','Ngày mở','Người phụ thuộc','Pháp nhân tại Mỹ','Bang','Vốn điều lệ','Đăng ký DN','Chủ sở hữu / thành viên','Trụ sở','Ghi chú','Đã thu (USD)','Đã nhận','Đã duyệt','Chờ duyệt','Còn thiếu','Cập nhật']];
+  const kh=[['Mã HS','Đương đơn','Công ty VN','Tên công ty (EN)','Mã số DN','Ngành','Văn phòng','Phương án','Bước','Chuyên viên','Ngày mở','Người phụ thuộc','Pháp nhân tại Mỹ','Bang','Địa chỉ tại Mỹ','Vốn điều lệ','Đăng ký DN','Chủ sở hữu / thành viên','Trụ sở','Ghi chú','Đã thu (USD)','Đã nhận','Đã duyệt','Chờ duyệt','Còn thiếu','Cập nhật']];
   const ck=[['Mã HS','Mã TL','Tài liệu','Nhóm','Trạng thái','Ghi chú','Số tệp','Cập nhật']];
   const tt=[['Mã HS','Đợt','Thời điểm','Số tiền (USD)','Đã thu (USD)']];
   R.clients.forEach(c=>{const s=stats(c);
-    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,'IDC VIETNAM',c.opt,c.step,c.staff,c.opened,c.deps,c.us,c.state,c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.rcv,s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
+    kh.push([c.id,c.name,c.company,c.companyEn,c.mst,c.industry,'IDC VIETNAM',c.opt,c.step,c.staff,c.opened,c.deps,c.us,stateLabel(c.state),usAddrOf(c),c.charter,c.reg,c.owners,c.addr,c.note,paidOf(c),s.rcv,s.approved,s.review,s.missing,fmtTime(c.updatedAt)]);
     DOCS.forEach(d=>{const x=(c.docs||{})[d.code]||{};ck.push([c.id,d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],x.note||'',(R.files[c.id]||[]).filter(f=>f.code===d.code).length||'',fmtTime(x.at)])});
     PAY.forEach(p=>tt.push([c.id,p.n,p.w,p.a,+((c.pay||{})[p.k])||0]));
   });
@@ -707,7 +711,7 @@ function vCase(){
   else if(S.tab==='approved'){const l=by('approved');body=l.length?groupedCards(c,l,'approved'):`<div class="empty"><b>Chưa có tài liệu nào được duyệt</b></div>`}
   else if(S.tab==='all'){body=`<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th>Tệp</th><th>Ghi chú</th><th>Cập nhật</th><th></th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g&&m(d));if(!ds.length)return'';return `<tr class="grp"><td colspan="7">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const x=(c.docs||{})[d.code]||{},st=stOf(c,d.code),n=filesOf(c,d.code).length;return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="num">${n?`${I('file',13)} ${n}`:'—'}</td><td class="dnote" style="max-width:240px">${esc(x.note||'')}</td><td class="dnote">${fmtTime(x.at)}</td><td class="r"><button class="btn sm ghost" data-doc="${d.code}">Mở</button></td></tr>`}).join('')}).join('')}</tbody></table></div>`}
   else if(S.tab==='info'){
-    const info=[['Đương đơn',c.name],['Công ty Việt Nam',c.company],['Tên tiếng Anh',c.companyEn],['Mã số doanh nghiệp',c.mst],['Vốn điều lệ',c.charter],['Đăng ký doanh nghiệp',c.reg],['Chủ sở hữu / thành viên',c.owners],['Trụ sở',c.addr],['Ngành',c.industry],['Phương án',optLabel(c.opt)],['Pháp nhân tại Mỹ',[c.us,c.state].filter(Boolean).join(' · ')],['Người phụ thuộc',c.deps],['Văn phòng','IDC VIETNAM'],['Chuyên viên',c.staff],['Ngày mở hồ sơ',c.opened]];
+    const info=[['Đương đơn',c.name],['Công ty Việt Nam',c.company],['Tên tiếng Anh',c.companyEn],['Mã số doanh nghiệp',c.mst],['Vốn điều lệ',c.charter],['Đăng ký doanh nghiệp',c.reg],['Chủ sở hữu / thành viên',c.owners],['Trụ sở',c.addr],['Ngành',c.industry],['Phương án',optLabel(c.opt)],['Pháp nhân tại Mỹ',c.us],['Bang',stateLabel(c.state)],['Địa chỉ tại Mỹ',usAddrOf(c)],['Người phụ thuộc',c.deps],['Văn phòng','IDC VIETNAM'],['Chuyên viên',c.staff],['Ngày mở hồ sơ',c.opened]];
     let acc=0;
     body=`<div class="two" style="padding:18px">
       <div class="card"><div class="card-h"><h3>Thông tin hồ sơ</h3>${R.canWrite?`<div class="sp"><button class="btn sm" data-act="editClient">${I('edit',14)}Sửa</button></div>`:''}</div><div class="card-b"><dl class="info" style="margin:0">${info.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v||'—')}</dd></div>`).join('')}</dl>${c.note?`<div class="banner warn" style="margin-top:16px">${I('alert')}<div>${esc(c.note)}</div></div>`:''}</div></div>
@@ -790,7 +794,12 @@ function drawRender(soft){
       <div class="fld"><label for="f-office">Văn phòng</label><input id="f-office" value="IDC VIETNAM" readonly tabindex="-1" style="background:var(--panel);color:var(--muted)"></div>
       ${F('staff','Chuyên viên phụ trách',v('staff'))}
       <div class="fld"><label for="f-opt">Phương án đầu tư</label><select id="f-opt">${[['?','Chưa xác định'],['A','A · Mở mới doanh nghiệp tại Mỹ'],['B','B · Đã có doanh nghiệp tại Mỹ']].map(([k,l])=>`<option value="${k}" ${(c0?c0.opt:'?')===k?'selected':''}>${l}</option>`).join('')}</select></div>
-      ${F('us','Pháp nhân tại Mỹ',v('us'))}${F('state','Bang',v('state'))}
+      <div class="full fsec">Công ty tại Mỹ</div>
+      ${F('us','Pháp nhân tại Mỹ (tên công ty)',v('us'))}
+      <div class="fld"><label for="f-state">Bang</label><select id="f-state"><option value="">— Chọn bang —</option><optgroup label="Hay dùng cho L-1A">${POPULAR_STATES.map(k=>{const n=US_STATES.find(x=>x[0]===k)[1];return `<option value="${k}" ${(c0&&(c0.state===k||String(c0.state||'').toLowerCase()===n.toLowerCase()))?'selected':''}>${n} (${k})</option>`}).join('')}</optgroup><optgroup label="Tất cả các bang">${US_STATES.map(([k,n])=>`<option value="${k}" ${(c0&&!POPULAR_STATES.includes(k)&&(c0.state===k||String(c0.state||'').toLowerCase()===n.toLowerCase()))?'selected':''}>${n} (${k})</option>`).join('')}</optgroup>${c0&&c0.state&&!US_STATES.some(([k,n])=>k===c0.state||n.toLowerCase()===String(c0.state).toLowerCase())?`<option value="${esc(c0.state)}" selected>${esc(c0.state)}</option>`:''}</select></div>
+      ${F('usAddr','Địa chỉ công ty tại Mỹ (số nhà, đường, suite)',v('usAddr'),'full')}
+      ${F('usCity','Thành phố (City)',v('usCity'))}${F('usZip','Mã ZIP',v('usZip'))}
+      <div class="full fsec">Thông tin khác</div>
       ${F('deps','Người phụ thuộc',v('deps'))}${F('opened','Ngày mở hồ sơ',c0?v('opened'):fmtTime(new Date().toISOString()).slice(0,10))}
       ${F('charter','Vốn điều lệ',v('charter'))}${F('reg','Đăng ký doanh nghiệp',v('reg'))}
       ${F('owners','Chủ sở hữu / thành viên góp vốn',v('owners'),'full')}${F('addr','Trụ sở',v('addr'),'full')}
@@ -803,7 +812,7 @@ async function submitClient(e){
   e.preventDefault();if(!R.canWrite){toast('Bạn đang ở chế độ chỉ xem.');return}
   const g=k=>($('f-'+k)?$('f-'+k).value.trim():'');
   const isNew=DR.arg==='new';
-  const data={name:g('name'),company:g('company'),companyEn:g('companyEn'),mst:g('mst'),industry:g('industry'),office:'IDC VIETNAM',staff:g('staff'),opt:g('opt')||'?',us:g('us'),state:g('state'),deps:g('deps'),opened:g('opened'),charter:g('charter'),reg:g('reg'),owners:g('owners'),addr:g('addr'),note:g('note')};
+  const data={name:g('name'),company:g('company'),companyEn:g('companyEn'),mst:g('mst'),industry:g('industry'),office:'IDC VIETNAM',staff:g('staff'),opt:g('opt')||'?',us:g('us'),state:g('state'),usAddr:g('usAddr'),usCity:g('usCity'),usZip:g('usZip'),deps:g('deps'),opened:g('opened'),charter:g('charter'),reg:g('reg'),owners:g('owners'),addr:g('addr'),note:g('note')};
   if(!data.name){toast('Nhập tên đương đơn.');return}
   if(isNew){
     const id=g('id').toUpperCase();if(!/^[A-Z0-9][A-Z0-9-]{2,30}$/.test(id)){toast('Mã hồ sơ chỉ gồm chữ, số và dấu gạch (ví dụ L1A-0023).');return}
