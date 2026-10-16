@@ -7,7 +7,7 @@
 <title>Văn bản hồ sơ · IDC VIETNAM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
-<style>html.exporting body{max-width:none!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#fff!important}html.exporting .bar{display:none!important}html.exporting .ed{border-bottom:0!important}html.exporting .ed:empty::before{content:''!important}
+<style>html.exporting body{max-width:none!important;margin:0!important;padding:0!important;box-shadow:none!important;background:#fff!important}html.exporting .bar{display:none!important}html.exporting .ed{border-bottom:0!important}html.exporting #doc{outline:0!important}html.exporting .ed:empty::before{content:''!important}
 body{font-family:Montserrat,Arial,sans-serif;background:#EEF2EC;color:#14201A}.msg{max-width:520px;margin:80px auto;padding:24px;background:#fff;border-radius:12px;border:1px solid #DCE8D7;font-size:14px;line-height:1.6}</style>
 <script src="/vendor/html2pdf.bundle.min.js" defer></script>
 </head>
@@ -28,12 +28,64 @@ body{font-family:Montserrat,Arial,sans-serif;background:#EEF2EC;color:#14201A}.m
   src.querySelectorAll('style').forEach(function (st) { document.head.appendChild(st); });
   document.body.innerHTML = src.body.innerHTML;
   var b = document.getElementById('dl'), doc = document.getElementById('doc');
+  /* Sửa nội dung: bật/tắt chỉnh sửa trực tiếp toàn bộ văn bản */
+  var eb = document.getElementById('edit');
+  if (eb) eb.onclick = function () {
+    var on = doc.getAttribute('contenteditable') !== 'true';
+    doc.setAttribute('contenteditable', on ? 'true' : 'false');
+    doc.classList.toggle('editing', on);
+    eb.textContent = on ? 'Xong sửa' : 'Sửa nội dung';
+    if (on) doc.focus();
+  };
+  /* Tải file Word (.doc) – mở được bằng Word, Google Docs, LibreOffice để sửa tiếp */
+  var wb = document.getElementById('word');
+  if (wb) wb.onclick = function () {
+    var c = doc.cloneNode(true);
+    c.removeAttribute('contenteditable');
+    c.querySelectorAll('.ed').forEach(function (e) { e.replaceWith(document.createTextNode(e.textContent)); });
+    var tb = function (cells, cls) { return '<table class="' + cls + '" width="100%"><tr>' + cells.map(function (x) { return '<td>' + x + '</td>'; }).join('') + '</tr></table>'; };
+    var hd = c.querySelector('.hd');
+    if (hd) {
+      var img = doc.querySelector('.hd img'), ih = 46, iw = img && img.naturalHeight ? Math.round(ih * img.naturalWidth / img.naturalHeight) : 120;
+      hd.outerHTML = '<table class="hd" width="100%" cellpadding="8" cellspacing="0"><tr><td bgcolor="#1B6B1B">' + (img ? '<img src="' + img.src + '" width="' + iw + '" height="' + ih + '" style="width:' + iw + 'px;height:' + ih + 'px">' : '') + '</td><td bgcolor="#1B6B1B" align="right"><b><font color="#F5C400">IDC VIETNAM</font></b><br><span><font color="#FFFFFF">SHAPE YOUR FUTURE</font></span></td></tr></table>';
+    }
+    var yl = c.querySelector('.yl'); if (yl) yl.outerHTML = '<p class="yl">&nbsp;</p>';
+    var info = c.querySelector('.info');
+    if (info) {
+      var items = [].slice.call(info.children).map(function (d) { var dt = d.querySelector('dt'), dd = d.querySelector('dd'); return [dt ? dt.textContent : '', dd ? dd.textContent : '']; });
+      var rows = ''; for (var i = 0; i < items.length; i += 2) { var a = items[i], z = items[i + 1] || ['', '']; rows += '<tr><td class="k">' + a[0] + '</td><td class="v">' + a[1] + '</td><td class="k">' + z[0] + '</td><td class="v">' + z[1] + '</td></tr>'; }
+      info.outerHTML = '<table class="info" width="100%">' + rows + '</table>';
+    }
+    c.querySelectorAll('table').forEach(function (t) { if (!t.className) { t.setAttribute('border', '1'); t.setAttribute('cellspacing', '0'); t.setAttribute('cellpadding', '4'); t.setAttribute('width', '100%'); } });
+    var sig = c.querySelector('.sig');
+    if (sig) sig.outerHTML = tb([].slice.call(sig.children).map(function (d) { return d.innerHTML.replace(/<div class="ln"><\/div>/, '<br><br><br><br>'); }), 'sig');
+    var ft = c.querySelector('.ft'); if (ft) ft.outerHTML = tb([].slice.call(ft.children).map(function (d) { return d.innerHTML; }), 'ft');
+    var tbdoc = doc.classList.contains('tbdoc'), acc = tbdoc ? '#B45309' : '#1B6B1B', soft = tbdoc ? '#FEF3C7' : '#E8F2E5';
+    var css = '@page Section1{size:21cm 29.7cm;margin:1.4cm 1.5cm 1.4cm 1.5cm}div.Section1{page:Section1}' +
+      'body{font-family:Montserrat,Arial,sans-serif;font-size:10pt;color:#14201A}' +
+      'table.hd{background:#1B6B1B;border-collapse:collapse}table.hd td{padding:8pt 10pt;color:#F5C400;font-size:13pt}table.hd span{color:#ffffff;font-size:7pt;letter-spacing:2pt}' +
+      'p.yl{border-top:3pt solid ' + (tbdoc ? '#E8A317' : '#F5C400') + ';margin:2pt 0 10pt;font-size:2pt}' +
+      '.badge{display:block;text-align:center;font-size:8pt;font-weight:bold;color:' + acc + '}' +
+      'h1{text-align:center;font-size:16pt;color:' + (tbdoc ? '#92400E' : '#14201A') + ';margin:4pt 0}.sub{text-align:center;color:#5B6B60;font-size:9pt}' +
+      'table.info{border:1pt solid #D5E4D0;background:' + (tbdoc ? '#FFFBEB' : '#F6FAF4') + ';margin:10pt 0;border-collapse:collapse}table.info td{padding:3pt 6pt;font-size:9pt}table.info td.k{color:#5B6B60;width:20%}table.info td.v{font-weight:bold;width:30%}' +
+      'h2{font-size:11pt;color:' + acc + ';border-bottom:1pt solid ' + acc + ';margin:12pt 0 6pt;padding-bottom:3pt}h2 span{font-size:8.5pt;color:#5B6B60;font-weight:normal}' +
+      'table{border-collapse:collapse;width:100%}th{background:' + soft + ';color:' + acc + ';font-size:7.5pt;text-transform:uppercase;text-align:left;padding:4pt;border:0.5pt solid #D5E4D0}td{padding:4pt;border:0.5pt solid #DCE8D7;vertical-align:top;font-size:9pt}tr.g td{background:#F6FAF4;font-weight:bold}' +
+      '.en,.hint{color:#8A978E;font-size:8pt}.m{font-family:Consolas,monospace}.c{text-align:center}.tag{font-weight:bold;font-size:8pt}' +
+      '.note{border-left:3pt solid #F5C400;background:#FDF6DA;padding:6pt 8pt;margin-top:10pt;font-size:9pt}' +
+      'table.sig td,table.ft td,table.hd td,table.info td{border:none}table.sig td{text-align:center;width:50%;padding-top:14pt}table.sig b{display:block}table.sig span{color:#5B6B60;font-style:italic;font-size:8pt}' +
+      'table.ft{border-top:1pt solid #F5C400;margin-top:14pt}table.ft td{font-size:7pt;color:#5B6B60}';
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>' + document.title + '</title><style>' + css + '</style></head><body><div class="Section1">' + c.innerHTML + '</div></body></html>';
+    var blob = new Blob(['﻿', html], { type: 'application/msword' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (doc.dataset.no || 'Van-ban') + '.doc';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
   b.onclick = async function () {
     if (typeof html2pdf === 'undefined') { alert('Chưa tải xong công cụ tạo PDF, vui lòng thử lại sau vài giây.'); return; }
     b.disabled = true; b.textContent = 'Đang tạo PDF…';
     try {
       await document.fonts.ready;
       /* html2canvas chụp lệch nếu trang đang cuộn hoặc đang căn giữa: đưa về góc trên trái, bỏ khung xem trên màn hình */
+      if (document.activeElement) document.activeElement.blur();
       var sy = window.scrollY;
       window.scrollTo(0, 0);
       document.documentElement.classList.add('exporting');

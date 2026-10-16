@@ -335,9 +335,9 @@ ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{mar
 .note{margin-top:5mm;padding:3.4mm 4.5mm;border-left:1mm solid #F5C400;background:#FDF6DA;border-radius:0 2mm 2mm 0;font-size:8.6pt}
 .sig{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:8mm;text-align:center;page-break-inside:avoid}.sig b{display:block;font-size:9pt}.sig span{display:block;color:#5B6B60;font-size:8pt;font-style:italic}.sig .ln{height:24mm}.sig .nm{font-weight:700}
 .ft{margin-top:8mm;border-top:.8pt solid #F5C400;padding-top:1.6mm;font-size:6.8pt;color:#5B6B60;display:flex;justify-content:space-between;gap:4mm}.ft b{color:#1B6B1B}
-.bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}.bar button{font:600 13px Montserrat,Arial;padding:8px 14px;border-radius:8px;border:1px solid #1B6B1B;background:#1B6B1B;color:#fff;cursor:pointer}.bar button.s{background:#fff;color:#1B6B1B}@media print{.bar{display:none}}#doc{width:182mm}body.exp{box-shadow:none}
+.bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}.bar button{font:600 13px Montserrat,Arial;padding:8px 14px;border-radius:8px;border:1px solid #1B6B1B;background:#1B6B1B;color:#fff;cursor:pointer}.bar button.s{background:#fff;color:#1B6B1B}@media print{.bar{display:none}}#doc.editing{outline:2px dashed #E8A317;outline-offset:3mm}#doc.editing *:focus{outline:1px solid #E8A317;background:#FFFBEB}#doc{width:182mm}body.exp{box-shadow:none}
 @media screen{body{max-width:210mm;margin:16px auto;padding:14mm;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.12)}html{background:#EEF2EC}}</style></head><body>
-<div class="bar"><button id="dl">Tải file PDF</button><button class="s" onclick="print()">In</button><button class="s" onclick="close()">Đóng</button></div>
+<div class="bar"><button class="s" id="edit" title="Sửa trực tiếp mọi chữ trên văn bản trước khi tải">Sửa nội dung</button><button id="dl">Tải file PDF</button><button class="s" id="word" title="Tải bản Word để chỉnh sửa tiếp trong Word / Google Docs">Tải file Word</button><button class="s" onclick="print()">In</button><button class="s" onclick="close()">Đóng</button></div>
 <div id="doc" data-no="${no}"><div class="hd"><img src="${location.origin}/logo-idc.jpg" alt="IDC VIETNAM"><div class="r">IDC VIETNAM<small>SHAPE YOUR FUTURE</small></div></div><div class="yl"></div>
 `;
 }
