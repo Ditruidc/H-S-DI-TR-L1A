@@ -692,3 +692,19 @@ html[lang="en"] .dept-en{display:none}
 .chatpanel.drop{outline:3px dashed #17631A;outline-offset:-6px}
 .chatpanel.drop .ch-msgs::after{content:"Thả tệp vào đây để gửi";position:absolute;inset:auto 0 50% 0;text-align:center;font-weight:700;color:#17631A}
 .ch-msgs{position:relative}
+.cm-saves{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.cm-save{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;align-self:flex-start;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;background:#FFF3C4;color:#6B4E00;border:1px solid #F0D47A}
+.cm-save .i{stroke:#8A6400}.cm-save:hover{background:#FFE99A}
+.cm-save.done{background:#E3F3E3;color:#0E4A22;border-color:#B5DCB3}.cm-save.done .i{stroke:#17631A}
+.cm.me .cm-save{background:#FFF3C4;color:#6B4E00}.cm.me .cm-save.done{background:#E3F3E3;color:#0E4A22}
+.ch-savebar{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-top:1px solid #F0D47A;background:#FFFBEA}
+.ch-sb-t{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#4B3A00;min-width:0}.ch-sb-t .i{stroke:#8A6400;flex:none}.ch-sb-t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-sb-r{display:flex;gap:6px}.ch-sb-r select{flex:1;min-width:0;height:34px;border:1px solid #E5C866;border-radius:8px;padding:0 8px;font:inherit;font-size:12.5px;background:#fff}
+.chatpanel.min{height:auto;width:320px}
+.chatpanel.min>*:not(.ch-h){display:none!important}
+.chatpanel.min .ch-h{cursor:pointer;border-bottom:0}
+.chatpanel.min .ch-h:hover{background:#EEF5EC}
+.chatfab.behind{opacity:0;pointer-events:none}
+.ch-h .ch-n{vertical-align:2px;margin-left:4px}
+@media (max-width:640px){.chatpanel.min{top:auto;left:auto;right:12px;bottom:12px;width:min(320px,calc(100vw - 24px));border-radius:14px}}
+.chatpanel.min{bottom:22px}

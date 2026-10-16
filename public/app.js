@@ -1,6 +1,6 @@
 
 /* ---------- helpers ---------- */
-const P={clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+const P={minus:'<path d="M5 12h14"/>',chu:'<path d="m18 15-6-6-6 6"/>',clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 down:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
@@ -1125,7 +1125,7 @@ document.addEventListener('change',e=>{const t=e.target;if(!t)return;
 document.addEventListener('click',e=>{if(S.colOpen&&!e.target.closest('.pg-cust')){S.colOpen=false;render()}});
 
 /* ---------- Trao đổi (chat) ---------- */
-const CH={pending:[],emoji:false,urls:{},sending:false,open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
+const CH={min:false,saveFor:null,saving:false,pending:[],emoji:false,urls:{},sending:false,open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
 const chatTot=()=>Object.values(CH.unread).reduce((a,b)=>a+b,0);
 function chatRoomOf(kind,key){return CH.rooms.find(r=>r.kind===kind&&(kind==='case'?r.client_id===key:false))}
 function chatTitle(r){if(!r)return'';if(r.kind==='case'){const c=getC(r.client_id);return `${r.client_id}${c&&c.name?' · '+c.name:''}`}if(r.kind==='group')return r.name||'Nhóm';const o=(r.members||[]).find(e=>e!==R.email);return personName(o)}
@@ -1141,8 +1141,8 @@ async function chatInit(){
 function chatReset(){CH.ready=false;CH.open=false;CH.room=null;CH.rooms=[];CH.msgs={};CH.unread={};const f=document.getElementById('chatfab');if(f)f.hidden=true;const p=document.getElementById('chatpanel');if(p)p.hidden=true}
 async function chatLoadRooms(){const r=await R.sb.from('chat_rooms').select('*').order('last_at',{ascending:false});if(r.error){CH.err=r.error.message;return}CH.err='';CH.rooms=(r.data||[]).map(x=>Object.assign(x,{members:(x.members||[]).map(e=>String(e).toLowerCase())}))}
 async function chatLoadUnread(){const r=await R.sb.rpc('chat_unread');if(r.error)return;CH.unread={};(r.data||[]).forEach(x=>{CH.unread[x.room_id]=+x.n});chatBadge()}
-async function chatLoadMsgs(id){const r=await R.sb.from('chat_messages').select('*').eq('room_id',id).order('id',{ascending:false}).limit(150);if(r.error){toast(dbErr(r.error));return}CH.msgs[id]=(r.data||[]).slice().reverse()}
-async function chatOpenRoom(id){if(CH.room!==id){CH.pending.forEach(f=>URL.revokeObjectURL(f.url));CH.pending=[];CH.emoji=false}CH.room=id;CH.open=true;CH.newGroup=false;CH.edit=false;CH.ment=new Map();chatRender();if(!CH.msgs[id])await chatLoadMsgs(id);delete CH.unread[id];chatBadge();chatRender(true);R.sb.rpc('chat_mark_read',{p_room:id})}
+async function chatLoadMsgs(id){const r=await R.sb.from('chat_messages').select('*').eq('room_id',id).order('id',{ascending:false}).limit(150);if(r.error){toast(dbErr(r.error));return}CH.msgs[id]=(r.data||[]).slice().reverse();if(id===CH.room)chatMarkSaved()}
+async function chatOpenRoom(id){if(CH.room!==id){CH.saveFor=null;CH.pending.forEach(f=>URL.revokeObjectURL(f.url));CH.pending=[];CH.emoji=false}CH.room=id;CH.open=true;CH.newGroup=false;CH.edit=false;CH.ment=new Map();chatRender();if(!CH.msgs[id])await chatLoadMsgs(id);delete CH.unread[id];chatBadge();chatRender(true);R.sb.rpc('chat_mark_read',{p_room:id})}
 async function chatOpenCase(cid){const ex=chatRoomOf('case',cid);if(ex)return chatOpenRoom(ex.id);const r=await R.sb.rpc('chat_case_room',{p_client:cid});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
 async function chatOpenDm(email){const r=await R.sb.rpc('chat_dm_room',{p_email:email});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
 function chatLive(m){
@@ -1151,12 +1151,12 @@ function chatLive(m){
   room.last_at=m.created_at;room.last_text=String(m.body).slice(0,160);room.last_by=m.author;CH.rooms.sort((a,b)=>String(b.last_at).localeCompare(String(a.last_at)));
   if(CH.msgs[m.room_id]&&!CH.msgs[m.room_id].some(x=>x.id===m.id))CH.msgs[m.room_id].push(m);
   const mine=String(m.author).toLowerCase()===R.email;
-  if(CH.open&&CH.room===m.room_id&&!document.hidden){if(!mine)R.sb.rpc('chat_mark_read',{p_room:m.room_id});chatRender(true);return}
+  if(CH.open&&!CH.min&&CH.room===m.room_id&&!document.hidden){if(!mine)R.sb.rpc('chat_mark_read',{p_room:m.room_id});chatRender(true);return}
   if(!mine){CH.unread[m.room_id]=(CH.unread[m.room_id]||0)+1;chatBadge();
     const ment=(m.mentions||[]).map(e=>String(e).toLowerCase()).includes(R.email);
     const msg=`${personName(m.author)}${ment?' nhắc bạn':''} · ${chatTitle(room)}: ${String(m.body).slice(0,90)}`;
     if(document.hidden&&('Notification' in window)&&Notification.permission==='granted'){try{const n=new Notification('IDC Portal · Tin nhắn',{body:msg,tag:'idc-chat-'+m.room_id});n.onclick=()=>{window.focus();chatOpenRoom(m.room_id);n.close()}}catch(_){}}
-    else if(!(CH.open&&CH.room===m.room_id))toast(msg)}
+    else if(!(CH.open&&!CH.min&&CH.room===m.room_id))toast(msg)}
   chatRender();
 }
 function chatBadge(){const f=document.getElementById('chatfab');if(!f)return;const n=chatTot();f.hidden=!(R.email&&R.role&&!R.err);const b=f.querySelector('.cf-n');b.textContent=n>99?'99+':String(n);b.hidden=!n;f.setAttribute('aria-label',n?`Trao đổi: ${n} tin chưa đọc`:'Trao đổi')}
@@ -1187,7 +1187,7 @@ function chatListHTML(){
     body=dms.map(r=>{const o=(r.members||[]).find(e=>e!==R.email);return item(r.id,personName(o),'',r.last_text?`${r.last_by===R.email?'Bạn: ':''}${r.last_text}`:'',r.last_text?r.last_at:'',un(r.id),{cls:'dm',t:esc(initials(personName(o)))},`data-chroom="${r.id}"`)}).join('')+
       (others.length?`<div class="ch-sec">Bắt đầu nhắn riêng</div>`+others.map(p=>item(p.email,personName(p.email),ROLE_VI[p.role]||'','','',0,{cls:'dm off',t:esc(initials(personName(p.email)))},`data-chdm="${esc(p.email)}"`)).join(''):'');
   }
-  return `<div class="ch-h"><b>Trao đổi</b><button class="icon-btn" data-chclose aria-label="Đóng">${I('x')}</button></div><div class="ch-tabs" role="tablist">${tabs}</div>${CH.err?`<div class="banner warn" style="margin:10px">${I('alert')}<div>Chưa cài phần Trao đổi trên Supabase (chạy supabase/chat.sql). <span class="dnote">${esc(CH.err)}</span></div></div>`:''}<div class="ch-list">${body}</div>`;
+  return `<div class="ch-h"><b>Trao đổi${chatTot()?` <span class="ch-n">${chatTot()}</span>`:''}</b><button class="icon-btn" data-chmin aria-label="${CH.min?'Mở rộng':'Thu nhỏ'}" title="${CH.min?'Mở rộng':'Thu nhỏ'}">${I(CH.min?'chu':'minus',18)}</button><button class="icon-btn" data-chclose aria-label="Tắt" title="Tắt">${I('x')}</button></div><div class="ch-tabs" role="tablist">${tabs}</div>${CH.err?`<div class="banner warn" style="margin:10px">${I('alert')}<div>Chưa cài phần Trao đổi trên Supabase (chạy supabase/chat.sql). <span class="dnote">${esc(CH.err)}</span></div></div>`:''}<div class="ch-list">${body}</div>`;
 }
 function chatGroupForm(r){
   const sel=new Set(r?r.members:[R.email]);
@@ -1204,17 +1204,18 @@ function chatThreadHTML(){
   (ms||[]).forEach(m=>{const d=new Date(m.created_at).toDateString();if(d!==last){last=d;html+=`<div class="cm-day"><span>${fmtDate(m.created_at)}</span></div>`}
     const mine=String(m.author).toLowerCase()===R.email;
     html+=`<div class="cm${mine?' me':''}">${mine?'':`<span class="ch-av sm">${esc(initials(personName(m.author)))}</span>`}<div class="cm-b">${mine?'':`<b>${esc(personName(m.author))}</b>`}${m.body?`<div class="cm-t">${chatBodyHTML(m,r)}</div>`:''}${chatAttHTML(m)}<time>${chatTime(m.created_at)}</time></div></div>`});
-  return `<div class="ch-h"><button class="icon-btn" data-chback aria-label="Quay lại">${I('chl',18)}</button><div class="ch-ht"><b>${esc(chatTitle(r))}</b><span title="${esc(ppl.map(personName).join(', '))}">${esc(sub)}</span></div>${r.kind==='case'?`<button class="icon-btn" data-open="${esc(r.client_id)}" title="Mở hồ sơ">${I('folder',16)}</button>`:''}${canEdit?`<button class="icon-btn" data-chedit title="Sửa nhóm">${I('edit',16)}</button>`:''}${r.kind==='group'&&!canEdit&&r.members.includes(R.email)?`<button class="icon-btn" data-chleave title="Rời nhóm">${I('undo',16)}</button>`:''}<button class="icon-btn" data-chclose aria-label="Đóng">${I('x')}</button></div>
+  return `<div class="ch-h"><button class="icon-btn" data-chback aria-label="Quay lại">${I('chl',18)}</button><div class="ch-ht"><b>${esc(chatTitle(r))}${CH.min&&chatTot()?` <span class="ch-n">${chatTot()}</span>`:''}</b><span title="${esc(ppl.map(personName).join(', '))}">${esc(sub)}</span></div>${r.kind==='case'?`<button class="icon-btn" data-open="${esc(r.client_id)}" title="Mở hồ sơ">${I('folder',16)}</button>`:''}${canEdit?`<button class="icon-btn" data-chedit title="Sửa nhóm">${I('edit',16)}</button>`:''}${r.kind==='group'&&!canEdit&&r.members.includes(R.email)?`<button class="icon-btn" data-chleave title="Rời nhóm">${I('undo',16)}</button>`:''}<button class="icon-btn" data-chmin aria-label="${CH.min?'Mở rộng':'Thu nhỏ'}" title="${CH.min?'Mở rộng':'Thu nhỏ'}">${I(CH.min?'chu':'minus',18)}</button><button class="icon-btn" data-chclose aria-label="Tắt" title="Tắt">${I('x')}</button></div>
     ${CH.edit?chatGroupForm(r):''}
     <div class="ch-msgs" id="ch-msgs">${ms?(html||`<div class="ch-empty">Chưa có tin nhắn. Gõ <b>@</b> để nhắc tên người cần đọc.</div>`):'<div class="ch-empty">Đang tải…</div>'}</div>
     ${CH.pending.length?`<div class="ch-pend">${CH.pending.map((f,i)=>`<div class="ch-pf">${f.mime.startsWith('image/')?`<img src="${f.url}" alt="">`:`<span class="ch-pf-ic">${I('file',16)}</span>`}<span class="ch-pf-n" title="${esc(f.name)}">${esc(f.name)}<small>${chatSize(f.size)}</small></span><button type="button" class="ch-pf-x" data-chunpend="${i}" aria-label="Bỏ tệp">${I('x',12)}</button></div>`).join('')}</div>`:''}
+    ${CH.saveFor?chatSaveBar():''}
     <form class="ch-in" id="chform"><div class="ch-sugg" id="ch-sugg" hidden></div>${CH.emoji?`<div class="ch-emo" role="dialog" aria-label="Biểu tượng cảm xúc">${EMOJI.map(e=>`<button type="button" data-chemo="${e}">${e}</button>`).join('')}</div>`:''}
       <div class="ch-tools"><button type="button" class="ch-tool" data-chattach title="Gửi ảnh / tệp (tối đa 25 MB)" aria-label="Gửi ảnh hoặc tệp">${I('clip',18)}</button><button type="button" class="ch-tool${CH.emoji?' on':''}" data-chemoji title="Biểu tượng cảm xúc" aria-label="Biểu tượng cảm xúc">${I('smile',18)}</button></div>
       <textarea id="ch-text" rows="1" placeholder="Nhập tin nhắn… (@ để nhắc tên · dán ảnh Ctrl+V)" maxlength="4000"></textarea><button class="btn primary" type="submit" aria-label="Gửi" ${CH.sending?'disabled':''}>${CH.sending?'…':I('send',16)}</button></form>
     <input type="file" id="ch-file" multiple hidden>`;
 }
 function chatRender(scroll){
-  chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open;if(!CH.open)return;
+  chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open;p.classList.toggle('min',!!CH.min);const fab=document.getElementById('chatfab');if(fab)fab.classList.toggle('behind',CH.open);if(!CH.open)return;
   const ta=document.getElementById('ch-text');const draft=ta?ta.value:'';const hadFocus=document.activeElement===ta;const box=document.getElementById('ch-msgs');const atBottom=!box||box.scrollHeight-box.scrollTop-box.clientHeight<60;
   p.innerHTML=CH.room?chatThreadHTML():chatListHTML();
   const t2=document.getElementById('ch-text');if(t2){t2.value=draft;if(hadFocus||scroll)t2.focus();chatGrow(t2)}
@@ -1249,6 +1250,29 @@ function chatSuggest(t){
 }
 function chatPick(i){const t=document.getElementById('ch-text');const s=CH.sugg;if(!t||!s)return;const x=s.list[i];const ins='@'+x.n+' ';
   t.value=t.value.slice(0,s.start)+ins+t.value.slice(s.end);const c=s.start+ins.length;t.setSelectionRange(c,c);t.focus();CH.ment.set(x.n,x.e);CH.sugg=null;document.getElementById('ch-sugg').hidden=true}
+function chatSaveBar(){const r=CH.rooms.find(x=>x.id===CH.room);const c=r&&getC(r.client_id);if(!c)return'';const f=CH.saveFor;
+  const opts=Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g);return ds.length?`<optgroup label="${esc(GROUPS[g].short)}">${ds.map(d=>{const st=stOf(c,d.code);return `<option value="${d.code}" ${f.code===d.code?'selected':''}>${d.code} · ${esc(d.name)}${st==='missing'?' — còn thiếu':st==='approved'?' — đã duyệt':''}</option>`}).join('')}</optgroup>`:''}).join('');
+  return `<form class="ch-savebar" id="chsaveform"><div class="ch-sb-t">${I('down',14)}<span>Lưu <b>${esc(f.name)}</b> vào hồ sơ <b>${esc(c.id)}</b></span></div>
+    <div class="ch-sb-r"><select id="ch-save-code" required><option value="">— Chọn tài liệu —</option>${opts}</select><button type="button" class="btn sm" data-chsavecancel>Huỷ</button><button class="btn sm primary" type="submit" ${CH.saving?'disabled':''}>${CH.saving?'Đang lưu…':'Lưu'}</button></div></form>`}
+async function chatSaveToCase(code){
+  const f=CH.saveFor,r=CH.rooms.find(x=>x.id===CH.room),c=r&&getC(r.client_id);if(!f||!c||!code)return;
+  CH.saving=true;chatRender();
+  try{
+    const dl=await R.sb.storage.from('chat').download(f.path);if(dl.error)throw new Error(dl.error.message);
+    const ext=(f.name.split('.').pop()||'').toLowerCase();const mime=f.mime||EXT_TYPE[ext]||dl.data.type||'application/pdf';
+    const file=new File([dl.data],f.name,{type:mime});
+    const before=filesOf(getC(c.id)||c,code).length;
+    await uploadFiles(getC(c.id)||c,code,[file]);
+    const after=filesOf(getC(c.id)||c,code).length;
+    if(after>before){const d=DOC[code];
+      await R.sb.rpc('chat_send',{p_room:CH.room,p_body:`📥 Đã lưu “${f.name}” vào ${code}${d?' · '+d.name:''}`,p_mentions:[],p_files:[]});
+      const m=(CH.msgs[CH.room]||[]).find(x=>(x.attachments||[]).some(a=>a.path===f.path));if(m){m.saved=Object.assign({},m.saved,{[f.path]:code})}
+      CH.saveFor=null}
+  }catch(err){toast('Không lưu được: '+err.message)}
+  CH.saving=false;await chatLoadMsgs(CH.room);chatMarkSaved();chatRender(true);
+}
+function chatMarkSaved(){const ms=CH.msgs[CH.room]||[];const re=/^📥 Đã lưu “(.+)” vào ([A-Z]{2}-\d+)/;const done={};ms.forEach(m=>{const x=re.exec(m.body||'');if(x)done[x[1]]=x[2]});
+  ms.forEach(m=>{(m.attachments||[]).forEach(a=>{if(done[a.name]){m.saved=Object.assign({},m.saved,{[a.path]:done[a.name]})}})})}
 const EMOJI=['😀','😁','😂','🤣','😊','😍','🥰','😘','😉','😎','🤔','😅','😮','😢','😭','😡','😴','🤗','👍','👎','👏','🙏','💪','🙌','🤝','👌','✌️','👋','❤️','💚','🔥','🎉','✅','❌','⚠️','❓','⏰','📌','📎','📄','📁','📅','💼','🏦','💵','✈️','🏠','🇺🇸','🇻🇳','☕'];
 const BLOCK_EXT=/\.(exe|bat|cmd|sh|js|mjs|html?|svg|msi|apk|scr|ps1|vbs|jar)$/i;
 const chatSize=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
@@ -1261,7 +1285,12 @@ function chatAddFiles(list){
     CH.pending.push({file:f,name,size:f.size,mime:f.type||'',url:URL.createObjectURL(f)})}
   chatRender();const t=document.getElementById('ch-text');t&&t.focus();
 }
+const chatSavable=x=>/^(application\/pdf|image\/(png|jpe?g|webp))$/i.test(String(x.mime||''))||/\.(pdf|png|jpe?g|webp)$/i.test(String(x.name||''));
 function chatAttHTML(m){const a=Array.isArray(m.attachments)?m.attachments:[];if(!a.length)return'';
+  const room=CH.rooms.find(r=>r.id===m.room_id);const canSave=room&&room.kind==='case'&&R.canWrite&&getC(room.client_id);
+  const saves=canSave?a.filter(chatSavable).map(x=>{const done=(m.saved||{})[x.path];return `<button type="button" class="cm-save${done?' done':''}" data-chsave="${esc(x.path)}" data-name="${esc(x.name)}" data-mime="${esc(x.mime||'')}">${I(done?'check':'down',13)}${done?'Đã lưu vào '+esc(done):'Lưu “'+esc(x.name.length>28?x.name.slice(0,26)+'…':x.name)+'” vào hồ sơ'}</button>`}).join(''):'';
+  return chatAttInner(a)+(saves?`<div class="cm-saves">${saves}</div>`:'');}
+function chatAttInner(a){
   const imgs=a.filter(x=>String(x.mime).startsWith('image/')),oth=a.filter(x=>!String(x.mime).startsWith('image/'));
   return (imgs.length?`<div class="cm-imgs n${Math.min(imgs.length,3)}">${imgs.map(x=>`<button type="button" class="cm-img" data-chopen="${esc(x.path)}" title="${esc(x.name)}"><img data-chimg="${esc(x.path)}" alt="${esc(x.name)}"></button>`).join('')}</div>`:'')+
     oth.map(x=>`<button type="button" class="cm-file" data-chopen="${esc(x.path)}"><span class="cm-file-ic">${I('file',18)}</span><span><b>${esc(x.name)}</b><small>${chatSize(+x.size||0)} · bấm để mở</small></span></button>`).join('')}
@@ -1270,11 +1299,13 @@ function chatHydrate(){document.querySelectorAll('#chatpanel img[data-chimg]:not
 function chatInsert(txt){const t=document.getElementById('ch-text');if(!t)return;const a=t.selectionStart??t.value.length,b=t.selectionEnd??a;t.value=t.value.slice(0,a)+txt+t.value.slice(b);const c=a+txt.length;t.focus();t.setSelectionRange(c,c);chatGrow(t)}
 document.addEventListener('click',async e=>{
   const g=s=>e.target.closest(s);
-  if(g('#chatfab')){CH.open=!CH.open;if(CH.open&&!CH.room)chatLoadUnread();chatRender(true);return}
+  if(g('#chatfab')){if(CH.open&&CH.min){CH.min=false;chatRender(true);return}CH.open=!CH.open;CH.min=false;if(CH.open&&!CH.room)chatLoadUnread();chatRender(true);return}
   if(!g('#chatpanel')&&!g('[data-chatcase]'))return;
   let b;
   if((b=g('[data-chatcase]'))){chatOpenCase(b.dataset.chatcase);return}
-  if(g('[data-chclose]')){CH.open=false;chatRender();return}
+  if(g('[data-chmin]')){CH.min=!CH.min;CH.emoji=false;chatRender(!CH.min);return}
+  if(g('[data-chclose]')){CH.open=false;CH.min=false;chatRender();return}
+  if(CH.min&&g('.ch-h')&&!g('button')){CH.min=false;chatRender(true);return}
   if(g('[data-chback]')){CH.room=null;CH.edit=false;chatRender();return}
   if((b=g('[data-chtab]'))){CH.tab=b.dataset.chtab;CH.newGroup=false;chatRender();return}
   if((b=g('[data-chcase]'))){chatOpenCase(b.dataset.chcase);return}
@@ -1285,6 +1316,8 @@ document.addEventListener('click',async e=>{
   if(g('[data-chedit]')){CH.edit=!CH.edit;chatRender();return}
   if(g('[data-chleave]')){const r=await R.sb.rpc('chat_leave_group',{p_room:CH.room});if(r.error){toast(dbErr(r.error));return}CH.room=null;await chatLoadRooms();chatRender();toast('Đã rời nhóm');return}
   if((b=g('[data-chment]'))){chatPick(+b.dataset.chment);return}
+  if((b=g('[data-chsave]'))){CH.saveFor={path:b.dataset.chsave,name:b.dataset.name,mime:b.dataset.mime};CH.emoji=false;chatRender();setTimeout(()=>{const s2=document.getElementById('ch-save-code');s2&&s2.focus()},0);return}
+  if(g('[data-chsavecancel]')){CH.saveFor=null;chatRender();return}
   if(g('[data-chattach]')){const fi=document.getElementById('ch-file');fi&&fi.click();return}
   if(g('[data-chemoji]')){CH.emoji=!CH.emoji;chatRender();return}
   if((b=g('[data-chemo]'))){chatInsert(b.dataset.chemo);CH.emoji=false;chatRender();const t=document.getElementById('ch-text');if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length)}return}
@@ -1294,6 +1327,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('submit',async e=>{
   if(e.target.id==='chform'){e.preventDefault();chatSend();return}
+  if(e.target.id==='chsaveform'){e.preventDefault();chatSaveToCase(document.getElementById('ch-save-code').value);return}
   if(e.target.id==='chgform'){e.preventDefault();const f=e.target;const name=f.querySelector('#chg-name').value.trim();const mem=[...f.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);const rid=f.dataset.room;
     const r=rid?await R.sb.rpc('chat_update_group',{p_room:rid,p_name:name,p_members:mem}):await R.sb.rpc('chat_create_group',{p_name:name,p_members:mem});
     if(r.error){toast(dbErr(r.error));return}CH.newGroup=false;CH.edit=false;await chatLoadRooms();if(!rid&&r.data)chatOpenRoom(r.data);else chatRender();toast(rid?'Đã lưu nhóm':'Đã tạo nhóm '+name)}
