@@ -370,7 +370,7 @@ section.card:has(#loginform)::before{content:"";display:block;height:6px;backgro
 label.asg{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-top:6px;cursor:pointer;background:#fff}
 label.asg:hover{border-color:#17631A}
 label.asg input{width:16px;height:16px;accent-color:#17631A}
-label.asg span{display:flex;flex-direction:column}label.asg em{font-style:normal;font-size:11.5px;color:var(--muted)}
+label.asg>span:last-child{display:flex;flex-direction:column}label.asg em{font-style:normal;font-size:11.5px;color:var(--muted)}
 /* Báo cáo */
 .rp-seg{display:inline-flex;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:2px}
 .rp-seg button{border:0;background:none;color:#fff;font-weight:600;font-size:12.5px;padding:6px 10px;border-radius:8px;cursor:pointer}
@@ -391,3 +391,14 @@ label.asg span{display:flex;flex-direction:column}label.asg em{font-style:normal
 .rp-step b{text-align:right}
 @media (max-width:1100px){.rp-grid{grid-template-columns:1fr}}
 .asg-btn{margin-top:6px;padding:3px 9px;font-size:11.5px;border-color:#CFE3CB;background:#E6F1E4;color:#0E4A22}.asg-btn:hover{background:#d8eacf}
+
+/* Nút & khung phân công nổi bật */
+.asg-cta,.asg-btn{background:linear-gradient(180deg,#FFD43B,#F5C400);border:1px solid #D9AE00;color:#3B2F00;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 6px 14px -8px rgba(160,120,0,.8)}
+.asg-cta:hover,.asg-btn:hover{background:linear-gradient(180deg,#FFDB55,#F7C90F);filter:none}
+.asg-cta{padding:7px 14px;margin-left:4px}
+.asg-btn{margin-top:6px;padding:5px 11px;font-size:12px;border-radius:8px}
+.asg-grp{margin-top:12px}.asg-h{display:flex;align-items:center;justify-content:space-between}
+label.asg .av.sm{width:30px;height:30px;font-size:11px}
+label.asg:has(input:checked){border-color:#17631A;background:#F1F8EF;box-shadow:0 0 0 2px rgba(23,99,26,.12)}
+.asg-foot{position:sticky;bottom:0;background:var(--bg);display:flex;gap:8px;align-items:center;padding:12px 0 2px;margin-top:12px;border-top:1px solid var(--border)}
+.asg-foot .dnote{margin-right:auto;font-weight:600}

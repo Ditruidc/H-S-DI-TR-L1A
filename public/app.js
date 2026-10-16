@@ -602,7 +602,7 @@ function vClients(){
         <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
         <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
         <td class="r num">${s.review||'—'}</td>
-        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}${R.isAdmin?`<button class="btn sm asg-btn" data-assignopen="${esc(c.id)}">${I('users',13)}Phân công</button>`:''}</td>
+        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}${R.isAdmin?`<button class="btn asg-btn" data-assignopen="${esc(c.id)}">${I('users',14)}Phân công</button>`:''}</td>
         <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
     </table></div>
   </section>`:vEmpty()}`;
@@ -657,7 +657,7 @@ function vCase(){
     <div class="casehead">
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
         <div class="meta"><span>${I('folder',14)}${esc(c.company||'—')}</span><span>IDC VIETNAM</span><span>Chuyên viên: ${esc(c.staff||'—')}</span><span>${esc(optLabel(c.opt))}</span></div>
-        <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${R.isAdmin?`<button class="btn sm" data-act="assign">${I('edit',13)}Phân công</button>`:''}</div>
+        <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${R.isAdmin?`<button class="btn asg-cta" data-act="assign">${I('users',15)}Phân công xử lý</button>`:''}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
@@ -699,9 +699,14 @@ function drawRender(soft){
     signedUrl(f).then(url=>{if(!DR||DR.arg!==id)return;$('dr-open').href=url;
       body.innerHTML=(f.type||'').startsWith('image/')?`<img class="preview-img" src="${esc(url)}" alt="${esc(f.name)}">`:`<iframe class="pdf-frame" src="${esc(url)}" title="${esc(f.name)}"></iframe><div class="dnote" style="text-align:center">Nếu khung trống, bấm “Mở tab mới” hoặc “Tải xuống”.</div>`}).catch(e=>{body.innerHTML=`<div class="empty"><b>Không mở được tệp</b>${esc(e.message)}</div>`});
   } else if(DR.kind==='assign'){
-    const cur=new Set(assigneesOf(c));const grp=(role,label)=>{const l=(R.people||[]).filter(u=>u.role===role);return `<div class="box"><h4>${label}</h4>${l.length?l.map(u=>`<label class="asg"><input type="checkbox" data-asg="${esc(u.email)}" ${cur.has(u.email)?'checked':''}><span><b>${esc(u.name||u.email)}</b><em>${esc(u.email)}</em></span></label>`).join(''):'<div class="dnote">Chưa có tài khoản nào với quyền này.</div>'}</div>`};
-    $('dr-eb').textContent=`Hồ sơ ${c.id}`;$('dr-title').textContent='Phân công xử lý hồ sơ';$('dr-acts').innerHTML=`<button class="icon-btn" data-act="close" aria-label="Đóng">${I('x')}</button>`;
-    body.innerHTML=`<p class="dnote" style="margin:0 0 4px">Nhân viên và Luật sư <b>chỉ thấy và xử lý những hồ sơ được phân cho mình</b>. Quản trị luôn thấy tất cả. Người được phân sẽ nhận email khi hồ sơ có tệp mới.</p>${grp('staff','Nhân viên')}${grp('lawyer','Luật sư')}<div style="display:flex;gap:8px"><button class="btn primary" data-act="saveAssign">Lưu phân công</button><button class="btn" data-act="close">Huỷ</button></div>`;
+    const cur=new Set(assigneesOf(c));
+    const roleName={admin:'Quản trị',lawyer:'Luật sư',staff:'Nhân viên'};
+    const grp=(role,label,hint)=>{const l=(R.people||[]).filter(u=>u.role===role);return `<div class="box asg-grp"><div class="asg-h"><h4>${label} <span class="dnote">(${l.length})</span></h4>${l.length>1?`<button type="button" class="btn sm ghost" data-asgall="${role}">Chọn tất cả</button>`:''}</div>${hint?`<div class="dnote" style="margin:-2px 0 4px">${hint}</div>`:''}${l.length?l.map(u=>`<label class="asg"><input type="checkbox" data-asg="${esc(u.email)}" data-role="${role}" ${cur.has(u.email)?'checked':''}><span class="av sm">${esc(initials(u.name||u.email))}</span><span><b>${esc(u.name||u.email)}</b><em>${esc(u.email)} · ${roleName[role]}</em></span></label>`).join(''):'<div class="dnote">Chưa có tài khoản nào với quyền này. Thêm ở Quản trị → Nhân viên.</div>'}</div>`};
+    $('dr-eb').textContent=`Hồ sơ ${c.id} · ${c.name||''}`;$('dr-title').textContent='Phân công xử lý hồ sơ';$('dr-acts').innerHTML=`<button class="icon-btn" data-act="close" aria-label="Đóng">${I('x')}</button>`;
+    body.innerHTML=`<div class="banner"><span>${I('info',16)}</span><div>Tích chọn <b>một hoặc nhiều người</b> cùng xử lý hồ sơ này. Nhân viên và Luật sư <b>chỉ thấy hồ sơ được phân cho mình</b>; Quản trị luôn thấy tất cả. Người được phân nhận email khi hồ sơ có tệp mới.</div></div>
+    ${grp('staff','Nhân viên','Tải tệp, cập nhật thông tin hồ sơ')}${grp('lawyer','Luật sư','Duyệt tài liệu, yêu cầu bổ sung')}${grp('admin','Quản trị','Luôn thấy mọi hồ sơ; tích để nhận email của hồ sơ này')}
+    <div class="asg-foot"><span class="dnote" id="asg-n"></span><button class="btn primary" data-act="saveAssign">${I('check',14)}Lưu phân công</button><button class="btn" data-act="close">Huỷ</button></div>`;
+    const cnt=()=>{const n=body.querySelectorAll('[data-asg]:checked').length;$('asg-n').textContent=n?`Đã chọn ${n} người`:'Chưa chọn ai'};cnt();body.onchange=cnt;
   } else if(DR.kind==='client'){
     const c0=DR.arg==='new'?null:c;const v=k=>esc(c0?c0[k]||'':'');
     const nextId=(()=>{let m=0;R.clients.forEach(x=>{const mm=/(\d+)$/.exec(String(x.id));const n=mm?parseInt(mm[1],10):0;if(n>m)m=n});return 'L1A-'+String(m+1).padStart(4,'0')})();
@@ -751,6 +756,7 @@ document.addEventListener('click',async e=>{
   if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin')loadStaff();if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
   if(ds.staffdel){const r=await R.sb.from('staff').delete().eq('email',ds.staffdel);if(r.error)toast(dbErr(r.error));else{toast('Đã gỡ '+ds.staffdel);loadStaff()}return}
   if(ds.docdel!==undefined){t.closest('tr').remove();return}
+  if(ds.asgall){const bx=[...document.querySelectorAll(`[data-asg][data-role="${ds.asgall}"]`)];const all=bx.every(x=>x.checked);bx.forEach(x=>x.checked=!all);$('asg-n')&&document.getElementById('dr-body').onchange();return}
   if(ds.assignopen){S.view='case';S.client=ds.assignopen;S.tab='missing';setHash();render();setTimeout(()=>openDrawer('assign'),50);return}
   if(ds.open){S.view='case';S.client=ds.open;S.tab=stats(getC(ds.open)).missing?'missing':'review';S.q='';$('q').value='';setHash();render();window.scrollTo(0,0);return}
   if(ds.filter){S.filter=ds.filter;return render()}
