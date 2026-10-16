@@ -59,13 +59,30 @@ const POPULAR_STATES=['CA','TX','NY','FL','WA','NJ','GA','IL','DE','NV'];
 const stateLabel=v=>{if(!v)return'';const f=US_STATES.find(([k,n])=>k===v||n.toLowerCase()===String(v).toLowerCase());return f?`${f[1]} (${f[0]})`:v};
 const usAddrOf=c=>[c.usAddr,c.usCity,[stateLabel(c.state),c.usZip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
 const OFFICES=['TP.HCM','Hà Nội','Đà Nẵng','Buôn Ma Thuột','Hoa Kỳ'];
+const DEPTS=[
+ {k:'legal',t:'Pháp lý',en:'Legal',ab:'PL',c:'#2F4E7A',cs:'#E9EEF6'},
+ {k:'fin',t:'Tài chính',en:'Finance',ab:'TC',c:'#17631A',cs:'#E8F3E6'},
+ {k:'tax',t:'Thuế',en:'Tax',ab:'TH',c:'#A3402B',cs:'#FBECE8'},
+ {k:'hr',t:'Nhân sự',en:'Human Resources',ab:'NS',c:'#6A4A9C',cs:'#F0EAF8'},
+ {k:'plan',t:'Kế hoạch kinh doanh',en:'Business Plan',ab:'KH',c:'#1F5FA6',cs:'#E6EFF9'},
+ {k:'mkt',t:'Marketing',en:'Marketing Plan & Materials',ab:'MK',c:'#A33A6B',cs:'#F9E9F1'},
+ {k:'ops',t:'Hoạt động kinh doanh',en:'Business Operations',ab:'HĐ',c:'#0E7470',cs:'#E2F4F2'},
+ {k:'personal',t:'Hồ sơ cá nhân',en:'Personal Records',ab:'CN',c:'#A86A12',cs:'#FBF1DF'},
+ {k:'other',t:'Khác',en:'Other',ab:'KC',c:'#5B6672',cs:'#EEF1F4'}];
+const DEPT=Object.fromEntries(DEPTS.map(x=>[x.k,x]));
+const CAT2DEPT={'Pháp lý':'legal','Tài chính':'fin','Thuế':'tax','Nhân sự':'hr','Kế hoạch':'plan','Kế hoạch kinh doanh':'plan','Marketing':'mkt','Hoạt động':'ops','Cá nhân':'personal','Khác':'other'};
+function deptOf(d){if(/marketing|brochure|website|quảng bá/i.test((d.name||'')+' '+(d.en||'')))return'mkt';return CAT2DEPT[d.cat]||'other'}
+const deptSort=l=>l.slice().sort((a,b)=>DEPTS.findIndex(x=>x.k===deptOf(a))-DEPTS.findIndex(x=>x.k===deptOf(b)));
+function byDept(l){return DEPTS.map(x=>[x,l.filter(d=>deptOf(d)===x.k)]).filter(([,a])=>a.length)}
+const deptHead=(x,n)=>`<div class="dept-h" style="--dc:${x.c};--dcs:${x.cs}"><span class="dept-ab">${x.ab}</span><b>${x.t}</b><span class="dept-en">${x.en}</span><span class="dept-n">${n} tài liệu</span></div>`;
+const deptRow=(x,n,cols)=>`<tr class="dept-r"><td colspan="${cols}"><span class="dept-tag" style="--dc:${x.c};--dcs:${x.cs}"><span class="dept-ab">${x.ab}</span>${x.t}<span class="dept-en">· ${x.en}</span><span class="dept-n">${n}</span></span></td></tr>`;
 const OK_TYPES={'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
 const EXT_TYPE={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'};
 
 /* ---------- state ---------- */
 const CFG=window.APP_CONFIG||{};
 const BUCKET=CFG.BUCKET||'hoso';
-const S={view:'clients',client:null,tab:'missing',q:'',filter:'all'};
+const S={view:'clients',client:null,tab:'missing',q:'',filter:'all',dept:''};
 const R={sb:null,session:null,email:null,role:null,canWrite:false,isAdmin:false,ready:false,err:null,clients:[],files:{},filesFor:null,urls:{},staff:[]};
 const getC=id=>R.clients.find(c=>c.id===id);
 const stOf=(c,code)=>(c.docs&&c.docs[code]&&c.docs[code].s)||'missing';
@@ -437,7 +454,7 @@ async function zipCase(c){
   toast(`Đang đóng gói ${all.length} tệp…`);
   try{const z=new JSZip();const root=z.folder(`${c.id}_${slug(c.name||'')}`);
     const fail=[];
-    for(const f of all){const d=DOC[f.code];try{root.folder(GROUPS[d?d.group:'VN'].folder).file(dlName(c,f).replace(c.id+'_',''),await fetchBlob(f))}catch(_){fail.push(f.code+' – '+f.name)}}
+    for(const f of all){const d=DOC[f.code];try{root.folder(GROUPS[d?d.group:'VN'].folder).folder(d?String(DEPTS.findIndex(x=>x.k===deptOf(d))+1).padStart(2,'0')+'_'+DEPT[deptOf(d)].en.replace(/[^A-Za-z]+/g,'-').replace(/-$/,''):'09_Other').file(dlName(c,f).replace(c.id+'_',''),await fetchBlob(f))}catch(_){fail.push(f.code+' – '+f.name)}}
     root.file(`00_Checklist_${c.id}.csv`,checklistCSV(c));
     if(fail.length){root.file('00_KHONG_DOC_DUOC.txt','Các tệp sau không đọc được khi đóng gói:\r\n'+fail.join('\r\n'));toast(`${fail.length} tệp không đọc được, xem 00_KHONG_DOC_DUOC.txt trong ZIP.`)}
     saveFile(`${c.id}_${slug(c.name||'')}_HoSo-L1A.zip`,await z.generateAsync({type:'blob'}))
@@ -464,7 +481,7 @@ h1{text-align:center;font-size:16pt;font-weight:800;letter-spacing:.02em;color:#
 .info{display:grid;grid-template-columns:1fr 1fr;gap:1.6mm 8mm;margin:6mm 0 5mm;padding:4mm 5mm;border:.6pt solid #D5E4D0;border-radius:2.5mm;background:#F6FAF4}.info div{display:flex;gap:2mm}.info dt{color:#5B6B60;min-width:36mm}.info dd{font-weight:600}
 h2{font-size:10.5pt;font-weight:700;color:#1B6B1B;margin:5mm 0 2.4mm;display:flex;justify-content:space-between;align-items:baseline;border-bottom:.8pt solid #1B6B1B;padding-bottom:1.4mm;flex-wrap:wrap;gap:.6mm 4mm}h2 span{font-size:8.5pt;color:#5B6B60;font-weight:500;margin-left:auto;text-align:right}
 table{width:100%;border-collapse:collapse;font-size:8.6pt}th{background:#E8F2E5;color:#1B6B1B;font-size:7.2pt;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:2mm 2mm;border:.5pt solid #D5E4D0}td{padding:1.7mm 2mm;border:.5pt solid #DCE8D7;vertical-align:top}tr{page-break-inside:avoid}
-tr.g td{background:#F6FAF4;font-weight:700;font-size:8pt}.c{text-align:center;white-space:nowrap}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:8pt;white-space:nowrap}.en{color:#8A978E;font-size:7.4pt}
+tr.g td{background:#F6FAF4;font-weight:700;font-size:8pt}tr.sg td{background:#fff;font-weight:600;font-size:7.5pt;color:#334155;padding-top:5pt;border-bottom:0.5pt solid #CBD5E1}.c{text-align:center;white-space:nowrap}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:8pt;white-space:nowrap}.en{color:#8A978E;font-size:7.4pt}
 .tag{display:inline-block;border-radius:5mm;padding:.3mm 2.2mm;font-size:7.2pt;font-weight:600}.tag.ok{background:#E5F3E9;color:#17663A}.tag.wt{background:#FCF1D3;color:#8A5A00}
 ul.miss{columns:2;column-gap:8mm;padding-left:4mm;font-size:8.4pt}ul.miss li{margin-bottom:1mm;break-inside:avoid}ul.miss i{color:#5B6B60}
 .ed{outline:none;border-bottom:.8pt dashed #1B6B1B;padding:0 .8mm;font-weight:700;color:#1B6B1B}@media print{.ed{border-bottom:0}.ed:empty::before{content:""}}.ed:empty{display:inline-block;min-width:38mm}.ed:empty::before{content:attr(data-ph);color:#B9A27A;font-weight:500;font-style:italic}
@@ -487,7 +504,7 @@ function receiptHTML(c){
   const no=`BB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
   const s=stats(c),got=DOCS.filter(d=>isRcv(c,d.code)),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   let i=0;
-  const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')}).join('');
+  const rows=Object.keys(GROUPS).map(g=>{const l=got.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="6">${esc(GROUPS[g].full)}</td></tr>`+byDept(l).map(([x,dl])=>`<tr class="sg"><td colspan="6"><span style="color:${x.c}">■</span> ${x.t} <span class="en">· ${x.en}</span></td></tr>`+dl.map(d=>{const st=stOf(c,d.code);return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td class="c">${filesOf(c,d.code).length||'—'}</td><td class="c">${fmtDate(rcvDate(c,d.code))||'—'}</td><td class="c"><span class="tag ${st==='approved'?'ok':'wt'}">${st==='approved'?'Đã kiểm tra':'Đang kiểm tra'}</span></td></tr>`}).join('')).join('')}).join('');
   const missList=miss.map(d=>`<li><b>${d.code}</b> – ${esc(d.name)}${((c.docs||{})[d.code]||{}).note?` <i>(${esc(c.docs[d.code].note)})</i>`:''}</li>`).join('');
   return docHead(`Biên bản tiếp nhận ${c.id}`,no)+`<span class="badge ok">✓ XÁC NHẬN ĐÃ TIẾP NHẬN</span><h1>BIÊN BẢN TIẾP NHẬN HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
 ${docInfo(c,today)}
@@ -507,7 +524,7 @@ function noticeHTML(c){
   const no=`TB-${c.id}-${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`;
   const s=stats(c),miss=DOCS.filter(d=>stOf(c,d.code)==='missing');
   let i=0;
-  const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+l.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')}).join('');
+  const rows=Object.keys(GROUPS).map(g=>{const l=miss.filter(d=>d.group===g);if(!l.length)return'';return `<tr class="g"><td colspan="4">${esc(GROUPS[g].full)}</td></tr>`+byDept(l).map(([x,dl])=>`<tr class="sg"><td colspan="4"><span style="color:${x.c}">■</span> ${x.t} <span class="en">· ${x.en}</span></td></tr>`+dl.map(d=>{const cn=((c.docs||{})[d.code]||{}).note||'';const hint=[d.period,d.note].filter(Boolean).join(' · ');return `<tr><td class="c">${++i}</td><td class="m">${d.code}</td><td>${esc(d.name)}<div class="en">${esc(d.en)}</div></td><td>${cn?`<div class="req">${esc(cn)}</div>`:''}${hint?`<div class="hint">${esc(hint)}</div>`:''}${!cn&&!hint?'—':''}</td></tr>`}).join('')).join('')}).join('');
   const city='TP.HCM';
   return docHead(`Thông báo bổ sung ${c.id}`,no).replace('<div id="doc"','<div id="doc" class="tbdoc"')+`<span class="badge wt">! CẦN BỔ SUNG TÀI LIỆU</span><h1>THÔNG BÁO YÊU CẦU BỔ SUNG HỒ SƠ</h1><div class="sub">Số: <b>${no}</b> · Chương trình L-1A → EB-1C</div>
 ${docInfo(c,today)}
@@ -530,7 +547,7 @@ ${miss.length?`<p>Để bảo đảm tiến độ chuẩn bị và nộp hồ s�
 }
 window.receiptFor=(id,type)=>{const c=getC(id);return c?(type==='tb'?noticeHTML(c):receiptHTML(c)):null};
 function openReceipt(c,type){const w=window.open('/bienban.html?id='+encodeURIComponent(c.id)+(type?'&type='+type:''),'_blank');if(!w)toast('Trình duyệt chặn cửa sổ mới. Hãy cho phép popup cho trang này.')}
-function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
+function checklistCSV(c){return '\ufeff'+[['Mã','Tài liệu','Nhóm','Nhóm hồ sơ','Trạng thái','Ghi chú','Tệp'].map(csvCell).join(','),...DOCS.map(d=>[d.code,d.name,GROUPS[d.group].short,DEPT[deptOf(d)].t,ST[stOf(c,d.code)][0],((c.docs||{})[d.code]||{}).note||'',filesOf(c,d.code).map(f=>f.name).join(' | ')].map(csvCell).join(','))].join('\r\n')}
 async function exportExcel(){
   if(!window.XLSX){toast('Chưa tải được thư viện Excel.');return}
   const kh=[['Mã HS','Đương đơn','Công ty VN','Tên công ty (EN)','Mã số DN','Ngành','Văn phòng','Phương án','Bước','Chuyên viên','Ngày mở','Người phụ thuộc','Pháp nhân tại Mỹ','Bang','Địa chỉ tại Mỹ','Vốn điều lệ','Đăng ký DN','Chủ sở hữu / thành viên','Trụ sở','Ghi chú','Đã thu (USD)','Đã nhận','Đã duyệt','Chờ duyệt','Còn thiếu','Cập nhật']];
@@ -698,19 +715,21 @@ function docCard(c,d,mode){
 }
 function groupedCards(c,codes,mode){
   return Object.keys(GROUPS).map(g=>{const ds=codes.filter(d=>d.group===g);if(!ds.length)return'';
-    return `<div class="section-h"><h3>${GROUPS[g].full}</h3><span class="dnote">${ds.length} tài liệu</span></div><div class="docgrid">${ds.map(d=>docCard(c,d,mode)).join('')}</div>`}).join('');
+    return `<div class="section-h"><h3>${GROUPS[g].full}</h3><span class="dnote">${ds.length} tài liệu</span></div>`+byDept(ds).map(([x,l])=>`<section class="dept" style="--dc:${x.c};--dcs:${x.cs}">${deptHead(x,l.length)}<div class="docgrid">${l.map(d=>docCard(c,d,mode)).join('')}</div></section>`).join('')}).join('');
 }
 function vCase(){
   const c=getC(S.client);const s=stats(c);const step=c.step||1;watchFiles(c.id);
-  const q=S.q.trim().toLowerCase();const m=d=>!q||(d.code+' '+d.name+' '+d.en).toLowerCase().includes(q);
+  const q=S.q.trim().toLowerCase();const mq=d=>!q||(d.code+' '+d.name+' '+d.en+' '+DEPT[deptOf(d)].t+' '+DEPT[deptOf(d)].en).toLowerCase().includes(q);const m=d=>mq(d)&&(!S.dept||deptOf(d)===S.dept);
   const by=k=>DOCS.filter(d=>stOf(c,d.code)===k&&m(d));
   const tabs=[['missing','Cần bổ sung',s.missing,'bad'],['received','Đã nhận',s.rcv,'blue'],['review','Chờ duyệt',s.review,'warn'],['approved','Đã duyệt',s.approved,'ok'],['all','Tất cả tài liệu',DOCS.length,''],['info','Thông tin & thanh toán','',''],['email','Email nhắc khách','','']];
   let body='';
+  const tp={missing:d=>stOf(c,d.code)==='missing',received:d=>isRcv(c,d.code),review:d=>stOf(c,d.code)==='review',approved:d=>stOf(c,d.code)==='approved',all:()=>true}[S.tab];
+  const deptBar=tp?(()=>{const base=DOCS.filter(d=>tp(d)&&mq(d));if(!base.length)return'';const cnt=k=>base.filter(d=>deptOf(d)===k).length;return `<div class="deptbar" role="toolbar" aria-label="Lọc theo nhóm hồ sơ"><span class="deptbar-l">Nhóm hồ sơ</span><button class="dchip${!S.dept?' on':''}" data-dept="">Tất cả<span>${base.length}</span></button>${DEPTS.filter(x=>cnt(x.k)).map(x=>`<button class="dchip${S.dept===x.k?' on':''}" data-dept="${x.k}" style="--dc:${x.c};--dcs:${x.cs}"><i></i>${x.t}<span>${cnt(x.k)}</span></button>`).join('')}</div>`})():'';
   if(S.tab==='missing'){const l=by('missing');body=l.length?`<div class="banner" style="margin:16px 18px 0">${I('info')}<div>Mỗi thẻ là một tài liệu khách chưa nộp. Kéo tệp vào ô của thẻ (hoặc bấm vào ô) để lưu. Tệp lưu xong, tài liệu chuyển sang <b>Chờ duyệt</b>.</div></div>`+groupedCards(c,l,'missing'):`<div class="doneall">${I('check',20)}Không còn tài liệu bắt buộc nào thiếu.</div>`}
-  else if(S.tab==='received'){const l=DOCS.filter(d=>isRcv(c,d.code)&&m(d));body=l.length?`<div class="banner ok" style="margin:16px 18px 0">${I('check')}<div>Khách đã nộp <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc: <b>${s.approved}</b> đã duyệt, <b>${s.review}</b> đang chờ duyệt. Ngày nhận là ngày tệp đầu tiên được tải lên.</div></div><div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th class="r">Số tệp</th><th>Ngày nhận</th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=l.filter(d=>d.group===g);if(!ds.length)return'';return `<tr class="grp"><td colspan="5">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const st=stOf(c,d.code);return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="r num">${filesOf(c,d.code).length||'—'}</td><td class="num">${fmtDate(rcvDate(c,d.code))||'<span class="muted">—</span>'}</td></tr>`}).join('')}).join('')}</tbody></table></div>`:`<div class="empty"><b>Chưa nhận tài liệu nào</b>Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.</div>`}
+  else if(S.tab==='received'){const l=DOCS.filter(d=>isRcv(c,d.code)&&m(d));body=l.length?`<div class="banner ok" style="margin:16px 18px 0">${I('check')}<div>Khách đã nộp <b>${s.rcv}/${s.req}</b> tài liệu bắt buộc: <b>${s.approved}</b> đã duyệt, <b>${s.review}</b> đang chờ duyệt. Ngày nhận là ngày tệp đầu tiên được tải lên.</div></div><div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th class="r">Số tệp</th><th>Ngày nhận</th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=l.filter(d=>d.group===g);if(!ds.length)return'';return `<tr class="grp"><td colspan="5">${GROUPS[g].full}</td></tr>`+byDept(ds).map(([x,dl])=>deptRow(x,dl.length,5)+dl.map(d=>{const st=stOf(c,d.code);return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="r num">${filesOf(c,d.code).length||'—'}</td><td class="num">${fmtDate(rcvDate(c,d.code))||'<span class="muted">—</span>'}</td></tr>`}).join('')).join('')}).join('')}</tbody></table></div>`:`<div class="empty"><b>Chưa nhận tài liệu nào</b>Tài liệu khách nộp sẽ xuất hiện ở đây kèm ngày nhận.</div>`}
   else if(S.tab==='review'){const l=by('review');body=l.length?groupedCards(c,l,'review'):`<div class="empty"><b>Không có tài liệu chờ duyệt</b>Tệp mới tải lên sẽ xuất hiện ở đây.</div>`}
   else if(S.tab==='approved'){const l=by('approved');body=l.length?groupedCards(c,l,'approved'):`<div class="empty"><b>Chưa có tài liệu nào được duyệt</b></div>`}
-  else if(S.tab==='all'){body=`<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th>Tệp</th><th>Ghi chú</th><th>Cập nhật</th><th></th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g&&m(d));if(!ds.length)return'';return `<tr class="grp"><td colspan="7">${GROUPS[g].full}</td></tr>`+ds.map(d=>{const x=(c.docs||{})[d.code]||{},st=stOf(c,d.code),n=filesOf(c,d.code).length;return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="num">${n?`${I('file',13)} ${n}`:'—'}</td><td class="dnote" style="max-width:240px">${esc(x.note||'')}</td><td class="dnote">${fmtTime(x.at)}</td><td class="r"><button class="btn sm ghost" data-doc="${d.code}">Mở</button></td></tr>`}).join('')}).join('')}</tbody></table></div>`}
+  else if(S.tab==='all'){body=`<div class="tbl-wrap"><table><thead><tr><th>Mã</th><th>Tài liệu</th><th>Trạng thái</th><th>Tệp</th><th>Ghi chú</th><th>Cập nhật</th><th></th></tr></thead><tbody>${Object.keys(GROUPS).map(g=>{const ds=DOCS.filter(d=>d.group===g&&m(d));if(!ds.length)return'';return `<tr class="grp"><td colspan="7">${GROUPS[g].full}</td></tr>`+byDept(ds).map(([x,dl])=>deptRow(x,dl.length,7)+dl.map(d=>{const x=(c.docs||{})[d.code]||{},st=stOf(c,d.code),n=filesOf(c,d.code).length;return `<tr class="click" data-doc="${d.code}"><td class="mono">${d.code}</td><td style="min-width:220px"><div class="dname">${esc(d.name)} <span class="en">· ${esc(d.en)}</span></div></td><td><span class="pill ${ST[st][1]}">${ST[st][0]}</span></td><td class="num">${n?`${I('file',13)} ${n}`:'—'}</td><td class="dnote" style="max-width:240px">${esc(x.note||'')}</td><td class="dnote">${fmtTime(x.at)}</td><td class="r"><button class="btn sm ghost" data-doc="${d.code}">Mở</button></td></tr>`}).join('')).join('')}).join('')}</tbody></table></div>`}
   else if(S.tab==='info'){
     const info=[['Đương đơn',c.name],['Công ty Việt Nam',c.company],['Tên tiếng Anh',c.companyEn],['Mã số doanh nghiệp',c.mst],['Vốn điều lệ',c.charter],['Đăng ký doanh nghiệp',c.reg],['Chủ sở hữu / thành viên',c.owners],['Trụ sở',c.addr],['Ngành',c.industry],['Phương án',optLabel(c.opt)],['Pháp nhân tại Mỹ',c.us],['Bang',stateLabel(c.state)],['Địa chỉ tại Mỹ',usAddrOf(c)],['Người phụ thuộc',c.deps],['Văn phòng','IDC VIETNAM'],['Chuyên viên',c.staff],['Ngày mở hồ sơ',c.opened]];
     let acc=0;
@@ -738,7 +757,7 @@ function vCase(){
   </section>
   <section class="card">
     <div class="tabs" role="tablist">${tabs.map(([k,l,n,cl])=>`<button class="tab${cl?' t-'+cl:''}" role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${n!==''?`<span class="c ${n&&cl?cl:''}">${n}</span>`:''}</button>`).join('')}</div>
-    ${body}
+    ${deptBar}${body}
   </section>`;
 }
 
@@ -839,6 +858,7 @@ document.addEventListener('click',async e=>{
   if(ds.open){S.view='case';S.client=ds.open;S.tab=stats(getC(ds.open)).missing?'missing':'review';S.q='';$('q').value='';setHash();render();window.scrollTo(0,0);return}
   if(ds.filter){S.filter=ds.filter;return render()}
   if(ds.tab){S.tab=ds.tab;return render()}
+  if(ds.dept!==undefined){S.dept=ds.dept;return render()}
   if(ds.step&&c){const n=+ds.step;if(n!==(c.step||1))await updateClient(c,{step:n},`Chuyển sang bước ${n}: ${STEPS[n-1].t}`);return}
   if(ds.drop||ds.pick){if(!R.canWrite)return;upTarget=ds.drop||ds.pick;$('file').value='';$('file').click();return}
   if(ds.doc){openDrawer('doc',ds.doc);return}
