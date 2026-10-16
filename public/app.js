@@ -76,6 +76,59 @@ const deptSort=l=>l.slice().sort((a,b)=>DEPTS.findIndex(x=>x.k===deptOf(a))-DEPT
 function byDept(l){return DEPTS.map(x=>[x,l.filter(d=>deptOf(d)===x.k)]).filter(([,a])=>a.length)}
 const deptHead=(x,n)=>`<div class="dept-h" style="--dc:${x.c};--dcs:${x.cs}"><span class="dept-ab">${x.ab}</span><b>${x.t}</b><span class="dept-en">${x.en}</span><span class="dept-n">${n} tài liệu</span></div>`;
 const deptRow=(x,n,cols)=>`<tr class="dept-r"><td colspan="${cols}"><span class="dept-tag" style="--dc:${x.c};--dcs:${x.cs}"><span class="dept-ab">${x.ab}</span>${x.t}<span class="dept-en">· ${x.en}</span><span class="dept-n">${n}</span></span></td></tr>`;
+/* ---------- Bước 2: mốc tiến độ (data.ms) ---------- */
+const dmy=v=>{if(!v||!/^\d{4}-\d{2}-\d{2}/.test(v))return'';const[y,m,d]=v.slice(0,10).split('-');return `${d}/${m}/${y}`};
+const addBizDays=(v,n)=>{const d=new Date(v+'T00:00:00');let k=0;while(k<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w&&w!==6)k++}return d.toISOString().slice(0,10)};
+const RESULT={pass:['Đậu','ok'],rfe:['Cần bổ sung (221g)','warn'],deny:['Từ chối','bad']};
+function msList(c){const m=c.ms||{};const l=[
+  {k:'fee',t:'Đóng phí USCIS',en:'USCIS filing fees',done:!!m.feeDate,v:dmy(m.feeDate)},
+  ...(m.premium?[{k:'pp',t:'Premium Processing (I-907)',en:'Premium Processing',done:!!m.premiumDate,v:m.premiumDate?`Nộp ${dmy(m.premiumDate)} · USCIS phản hồi trước ${dmy(addBizDays(m.premiumDate,15))}`:''}]:[]),
+  {k:'i129',t:'Nộp I-129',en:'I-129 filed',done:!!m.i129Date,v:[dmy(m.i129Date),m.receipt?'Receipt '+m.receipt:''].filter(Boolean).join(' · ')},
+  {k:'ok',t:'USCIS duyệt (I-797)',en:'I-797 approval',done:!!m.approvedDate,v:dmy(m.approvedDate)},
+  {k:'iv',t:'Lịch phỏng vấn',en:'Consular interview',done:!!m.interviewDate,v:[dmy(m.interviewDate),m.interviewPlace].filter(Boolean).join(' · ')},
+  {k:'res',t:'Kết quả phỏng vấn',en:'Interview result',done:!!m.result,v:m.result?RESULT[m.result][0]+(m.resultDate?' · '+dmy(m.resultDate):''):''}];
+  return l}
+const msProg=c=>{const l=msList(c);return{n:l.filter(x=>x.done).length,t:l.length}};
+function msPanel(c,s){
+  const m=c.ms||{};const l=msList(c);const pr=msProg(c);const ed=R.canWrite;
+  const today=new Date().toISOString().slice(0,10);
+  const ivLeft=m.interviewDate&&!m.result?Math.round((new Date(m.interviewDate)-new Date(today))/864e5):null;
+  const banners=[
+    s.missing?`<div class="banner warn">${I('alert')}<div>Có <b>${s.missing} tài liệu</b> cần bổ sung sau khi đã chuyển sang Bước 2. Xem tab <b>Cần bổ sung</b>.</div></div>`:'',
+    m.result==='rfe'?`<div class="banner warn">${I('alert')}<div><b>Lãnh sự yêu cầu bổ sung (221g).</b> Gửi bổ sung cho lãnh sự rồi cập nhật lại kết quả.</div></div>`:'',
+    m.result==='deny'?`<div class="banner bad">${I('alert')}<div><b>Hồ sơ bị từ chối tại phỏng vấn.</b> Trao đổi với Luật sư về phương án tiếp theo.</div></div>`:'',
+    ivLeft!==null&&ivLeft>=0&&ivLeft<=7?`<div class="banner blue">${I('clock')}<div>Phỏng vấn ${ivLeft===0?'<b>hôm nay</b>':`còn <b>${ivLeft} ngày</b>`} (${dmy(m.interviewDate)}${m.interviewPlace?' · '+esc(m.interviewPlace):''}).</div></div>`:''].join('');
+  const row=x=>`<li class="${x.done?'done':''}"><span class="ms-dot">${x.done?I('check',12):''}</span><div><b>${x.t}</b><span class="en">${x.en}</span></div><span class="ms-v">${x.v?esc(x.v):'<span class="muted">Chưa có</span>'}</span></li>`;
+  const D=(k,label,extra='')=>`<div class="fld"><label for="ms-${k}">${label}</label><input type="date" id="ms-${k}" value="${esc(m[k]||'')}" ${extra}></div>`;
+  const form=ed?`<form id="msform" class="form ms-form">
+      ${D('feeDate','Ngày đóng phí USCIS')}
+      <div class="fld"><label for="ms-premium">Premium Processing (I-907)</label><select id="ms-premium"><option value="">Không dùng</option><option value="1" ${m.premium?'selected':''}>Có dùng – xét duyệt 15 ngày làm việc</option></select></div>
+      <div class="fld ms-pp" ${m.premium?'':'hidden'}><label for="ms-premiumDate">Ngày nộp I-907</label><input type="date" id="ms-premiumDate" value="${esc(m.premiumDate||'')}"></div>
+      ${D('i129Date','Ngày nộp I-129')}
+      <div class="fld"><label for="ms-receipt">Số Receipt (I-797C)</label><input id="ms-receipt" value="${esc(m.receipt||'')}" placeholder="VD: WAC2690012345" autocomplete="off"></div>
+      ${D('approvedDate','Ngày USCIS duyệt (I-797 Approval)')}
+      ${D('interviewDate','Ngày phỏng vấn lãnh sự')}
+      <div class="fld"><label for="ms-interviewPlace">Địa điểm phỏng vấn</label><input id="ms-interviewPlace" list="ms-places" value="${esc(m.interviewPlace||'')}" placeholder="Chọn hoặc gõ"><datalist id="ms-places"><option value="Tổng Lãnh sự quán Hoa Kỳ – TP.HCM"><option value="Đại sứ quán Hoa Kỳ – Hà Nội"></datalist></div>
+      <div class="fld"><label for="ms-result">Kết quả phỏng vấn</label><select id="ms-result"><option value="">Chưa có</option>${Object.entries(RESULT).map(([k,[t]])=>`<option value="${k}" ${m.result===k?'selected':''}>${t}</option>`).join('')}</select></div>
+      ${D('resultDate','Ngày có kết quả')}
+      <div class="full ms-actions"><span class="dnote">Chọn kết quả <b>Đậu</b> là hồ sơ tự chuyển sang Bước 3.</span><button class="btn primary" type="submit">${I('check',14)}Lưu mốc tiến độ</button></div>
+    </form>`:'';
+  return `<section class="ms-panel">
+    <div class="ms-h"><div><div class="eyebrow">Bước 2 · Theo dõi mốc</div><h3>Nộp I-129 · Phỏng vấn</h3></div><div class="ms-prog"><span><b>${pr.n}</b>/${pr.t} mốc</span><i style="--p:${Math.round(pr.n/pr.t*100)}%"></i></div></div>
+    ${banners}
+    <div class="ms-body"><ol class="ms-list">${l.map(row).join('')}</ol>${form}</div>
+  </section>`;
+}
+async function saveMs(c){
+  const g=id=>{const el=$('ms-'+id);return el?el.value.trim():''};
+  const nm={feeDate:g('feeDate'),premium:!!g('premium'),premiumDate:g('premium')?g('premiumDate'):'',i129Date:g('i129Date'),receipt:g('receipt').toUpperCase(),approvedDate:g('approvedDate'),interviewDate:g('interviewDate'),interviewPlace:g('interviewPlace'),result:g('result'),resultDate:g('resultDate')};
+  if(nm.result&&!nm.resultDate)nm.resultDate=new Date().toISOString().slice(0,10);
+  const old=c.ms||{};const L={feeDate:'Đóng phí USCIS',premium:'Premium Processing',premiumDate:'Nộp I-907',i129Date:'Nộp I-129',receipt:'Receipt',approvedDate:'USCIS duyệt',interviewDate:'Lịch phỏng vấn',interviewPlace:'Địa điểm PV',result:'Kết quả PV',resultDate:'Ngày kết quả'};
+  const ch=Object.keys(nm).filter(k=>String(nm[k]||'')!==String(old[k]||''));
+  if(!ch.length){toast('Không có gì thay đổi');return}
+  const fmt=k=>k==='premium'?(nm[k]?'có':'không'):k==='result'?(nm[k]?RESULT[nm[k]][0]:'—'):/Date$/.test(k)?(dmy(nm[k])||'—'):(nm[k]||'—');
+  if(await updateClient(c,{ms:nm},'Cập nhật mốc Bước 2: '+ch.map(k=>`${L[k]} ${fmt(k)}`).join(', ')))toast('Đã lưu mốc tiến độ');
+}
 const OK_TYPES={'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
 const EXT_TYPE={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp'};
 
@@ -387,9 +440,13 @@ const whoHTML=e=>e?`<span>${esc(String(e).split('@')[0])}</span>`:'—';
 function dbErr(e){const m=(e&&e.message)||'';if(/row-level security|permission/i.test(m))return'Bạn không có quyền sửa dữ liệu này.';return'Chưa lưu được: '+(m||'lỗi không rõ')+'. Thử lại.'}
 async function updateClient(c,patch,logMsg,review){
   if(!(review?R.canReview:R.canWrite)){toast(review?'Bạn đang ở chế độ chỉ xem.':'Chỉ Quản trị hoặc Nhân viên được sửa thông tin hồ sơ.');return false}
+  const before=c.step||1;
   const r=await R.sb.rpc('patch_client',{p_id:c.id,p_patch:patch||{},p_log:logMsg||null});
   if(r.error){toast(dbErr(r.error));return false}
-  await loadClients();return true;
+  await loadClients();
+  const nc=getC(c.id);const after=nc&&(nc.step||1);
+  if(nc&&!(patch&&'step' in patch)&&after!==before)setTimeout(()=>toast(`Hồ sơ tự chuyển sang Bước ${after}: ${STEPS[after-1].t}`),900);
+  return true;
 }
 async function setStatus(c,code,s,note){
   const cur=(c.docs||{})[code]||{};
@@ -753,7 +810,8 @@ function vCase(){
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
-    <div class="steps2" role="list" aria-label="Lộ trình hồ sơ">${STEPS.map((x,i)=>{const st=i+1<step?'done':i+1===step?'cur':'next';const lab=st==='done'?'Hoàn thành':st==='cur'?'Đang thực hiện':'Sắp tới';const inner=`<span class="sx-top"><span class="sx-n">${st==='done'?I('check',14):i+1}</span><span class="sx-eb">Bước ${i+1}</span><span class="sx-st">${lab}</span></span><b class="sx-t">${esc(x.t)}</b><span class="sx-d">${esc(x.s||STEP_DESC[i]||'')}</span><span class="sx-time">${I('clock',12)}${esc(x.d)}</span>`;return `<div class="sx sx-${i+1} ${st}" role="listitem" ${st==='cur'?'aria-current="step"':''}>${R.canWrite?`<button data-step="${i+1}" title="Chuyển hồ sơ sang bước ${i+1}">${inner}</button>`:`<div class="sx-in">${inner}</div>`}</div>`}).join('')}</div>
+    <div class="steps2" role="list" aria-label="Lộ trình hồ sơ">${STEPS.map((x,i)=>{const st=i+1<step?'done':i+1===step?'cur':'next';const lab=st==='done'?'Hoàn thành':st==='cur'?'Đang thực hiện':'Sắp tới';const inner=`<span class="sx-top"><span class="sx-n">${st==='done'?I('check',14):i+1}</span><span class="sx-eb">Bước ${i+1}</span><span class="sx-st">${lab}</span></span><b class="sx-t">${esc(x.t)}</b><span class="sx-d">${esc(x.s||STEP_DESC[i]||'')}</span>${i===1&&step>=2?(()=>{const pr=msProg(c);return `<span class="sx-ms"><i style="--p:${Math.round(pr.n/pr.t*100)}%"></i>${pr.n}/${pr.t} mốc</span>`})():''}<span class="sx-time">${I('clock',12)}${esc(x.d)}</span>`;return `<div class="sx sx-${i+1} ${st}" role="listitem" ${st==='cur'?'aria-current="step"':''}>${R.canWrite?`<button data-step="${i+1}" title="Chuyển hồ sơ sang bước ${i+1}">${inner}</button>`:`<div class="sx-in">${inner}</div>`}</div>`}).join('')}</div>
+    ${step>=2?msPanel(c,s):''}
   </section>
   <section class="card">
     <div class="tabs" role="tablist">${tabs.map(([k,l,n,cl])=>`<button class="tab${cl?' t-'+cl:''}" role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${n!==''?`<span class="c ${n&&cl?cl:''}">${n}</span>`:''}</button>`).join('')}</div>
@@ -863,7 +921,7 @@ document.addEventListener('click',async e=>{
   if(ds.filter){S.filter=ds.filter;return render()}
   if(ds.tab){S.tab=ds.tab;return render()}
   if(ds.dept!==undefined){S.dept=ds.dept;return render()}
-  if(ds.step&&c){const n=+ds.step;if(n!==(c.step||1))await updateClient(c,{step:n},`Chuyển sang bước ${n}: ${STEPS[n-1].t}`);return}
+  if(ds.step&&c){const n=+ds.step;if(n>=2&&(c.step||1)===1){const st=stats(c);const left=st.req-st.approved;if(left>0&&!confirm(`Còn ${left} tài liệu bắt buộc chưa được duyệt. Vẫn chuyển hồ sơ sang Bước ${n}?`))return}if(n!==(c.step||1))await updateClient(c,{step:n},`Chuyển sang bước ${n}: ${STEPS[n-1].t}`);return}
   if(ds.drop||ds.pick){if(!R.canWrite)return;upTarget=ds.drop||ds.pick;$('file').value='';$('file').click();return}
   if(ds.doc){openDrawer('doc',ds.doc);return}
   if(ds.view){openDrawer('file',ds.view);return}
@@ -895,6 +953,7 @@ document.addEventListener('click',async e=>{
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();if((e.key==='Enter'||e.key===' ')&&e.target.dataset&&e.target.dataset.drop){e.preventDefault();e.target.click()}});
 document.addEventListener('submit',async e=>{if(e.target.id==='cform')return submitClient(e);
+  if(e.target.id==='msform'){e.preventDefault();const c=getC(S.client);if(c)await saveMs(c);return}
   if(e.target.id==='loginform'){e.preventDefault();$('l-btn').disabled=true;$('l-err').textContent='';const err=await login($('l-email').value.trim(),$('l-pass').value);if(err){$('l-err').textContent=err;$('l-btn').disabled=false}return}
   if(e.target.id==='staffform'){e.preventDefault();const email=$('s-email').value.trim().toLowerCase();const r=await R.sb.from('staff').upsert({email,name:$('s-name').value.trim(),role:$('s-role').value});if(r.error)toast(dbErr(r.error));else{toast('Đã thêm '+email);loadStaff()}return}});
 document.addEventListener('change',async e=>{const el=e.target;if(!el.dataset)return;
@@ -912,3 +971,5 @@ $('scrim').addEventListener('click',closeDrawer);
 $('q').addEventListener('input',e=>{S.q=e.target.value;if(S.view==='case'&&!['all','missing','received','review','approved'].includes(S.tab))S.tab='all';render();$('q').focus()});
 function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.client:S.view))}catch(_){}}
 (function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
+
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='ms-premium'){const b=document.querySelector('.ms-pp');if(b)b.hidden=!e.target.value}});

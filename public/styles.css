@@ -521,3 +521,33 @@ html[lang="en"] .dept-en{display:none}
 .drop{gap:10px;flex-wrap:wrap}
 .drop:hover .addf-pill{background:#0E4A22;transform:translateY(-1px)}
 .drop:focus-visible{outline:2px solid #17631A;outline-offset:2px}
+
+/* ---------- Bước 2: mốc tiến độ ---------- */
+.ms-panel{--c:#1F5FA6;--cs:#E6EFF9;--cb:#B9D0EC;margin:0 16px 16px;border:1px solid var(--cb);border-top:4px solid var(--c);border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(16,40,16,.05),0 6px 16px -10px rgba(16,40,70,.25);overflow:hidden}
+.ms-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:14px 18px 10px;background:linear-gradient(180deg,var(--cs),#fff)}
+.ms-h .eyebrow{color:var(--c)}
+.ms-h h3{margin:2px 0 0;font-size:16px;letter-spacing:-.01em;color:#0F1F3A}
+.ms-prog{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:150px;font-size:12px;color:#5B675A}
+.ms-prog b{font-size:16px;color:var(--c)}
+.ms-prog i,.sx-ms i{display:block;width:100%;height:6px;border-radius:99px;background:#E3EAF3;position:relative;overflow:hidden}
+.ms-prog i::after,.sx-ms i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--c);border-radius:99px}
+.ms-panel .banner{margin:0 18px 10px}
+.ms-body{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:18px;padding:6px 18px 18px}
+.ms-list{list-style:none;margin:0;padding:0;position:relative}
+.ms-list li{position:relative;display:grid;grid-template-columns:24px 1fr;gap:4px 10px;padding:8px 0 10px}
+.ms-list li:not(:last-child)::before{content:"";position:absolute;left:11px;top:30px;bottom:-4px;width:2px;background:#E3EAF3}
+.ms-list li.done:not(:last-child)::before{background:var(--c)}
+.ms-dot{width:24px;height:24px;border-radius:50%;border:2px solid #C9D6E6;background:#fff;display:grid;place-items:center;z-index:1}
+.ms-list li.done .ms-dot{background:var(--c);border-color:var(--c)}
+.ms-list li.done .ms-dot .i{stroke:#fff;stroke-width:3}
+.ms-list b{display:block;font-size:13px;color:#0F1F0F}
+.ms-list .en{font-size:11px;color:#8A978E}
+.ms-v{grid-column:2;font-size:12.5px;font-weight:600;color:var(--c)}
+.ms-v .muted{font-weight:400;color:#9AA59A}
+.ms-form{grid-template-columns:1fr 1fr;padding:14px;border:1px solid #E3EAF3;border-radius:12px;background:#F8FAFD;align-content:start}
+.ms-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sx-ms{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--c)}
+.sx-ms i{flex:1;height:5px}
+.banner.bad{background:#FBECE8;border-color:#F0C4B8;color:#7A2414}.banner.bad .i{stroke:#A3402B}
+.banner.blue{background:#E6EFF9;border-color:#B9D0EC;color:#163F70}.banner.blue .i{stroke:#1F5FA6}
+@media (max-width:900px){.ms-body{grid-template-columns:1fr}.ms-form{grid-template-columns:1fr}.ms-h{flex-direction:column;align-items:stretch}.ms-prog{align-items:stretch}}

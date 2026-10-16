@@ -46,7 +46,7 @@
       program: 'L-1A', name: 'Nguyễn Minh Khang', company: 'Công ty TNHH Thực phẩm Sao Mai', companyEn: 'Sao Mai Foods Co., Ltd', mst: '0312345678',
       industry: 'Chế biến thực phẩm', office: 'TP.HCM', staff: 'Lan Anh', assignees: ['lananh@idcvietnam.vn','luatsu@idcvietnam.vn'], opt: 'B', us: 'Sao Mai Foods USA LLC', state: 'California', deps: 'Vợ + 2 con',
       opened: '2026-06-02', charter: '15.000.000.000 VNĐ', reg: 'Lần đầu 2014, thay đổi lần 6 năm 2025', owners: 'Nguyễn Minh Khang 70% · Lê Thu Hà 30%',
-      addr: '12 Nguyễn Văn Trỗi, Phú Nhuận, TP.HCM', note: 'Khách ưu tiên nộp I-129 trong quý 4.', step: 2,
+      addr: '12 Nguyễn Văn Trỗi, Phú Nhuận, TP.HCM', note: 'Khách ưu tiên nộp I-129 trong quý 4.', step: 2, ms: { feeDate: '2026-09-22', premium: true, premiumDate: '2026-09-25', i129Date: '2026-09-25', receipt: 'WAC2690012345' },
       pay: { d1: 19000, d2: 20000 },
       docs: docs('B', ['VN-01','VN-02','VN-03','VN-04','VN-05','VN-06','VN-07','VN-08','VN-09','VN-10','VN-11','VN-13','VN-15','AP-01','AP-02','AP-03','AP-04','US-01','US-02','US-03','US-04','US-07','US-08'], ['VN-12','US-05','US-09'], { 'VN-14': 'Chờ khách chuyển vốn đợt 2', 'AP-05': 'Đã nộp hồ sơ xin LLTP, hẹn ngày 20/10' }) } },
     { id: 'L1A-0102', created_at: iso(60), updated_at: iso(0.2), data: {
@@ -154,6 +154,14 @@
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };
       c.data = merge(c.data, a.p_patch || {}); const t = new Date().toISOString(); c.updated_at = t;
       if (a.p_log) c.log = [{ t, by: ME, m: a.p_log }].concat(c.log || []).slice(0, 60);
+      const P = a.p_patch || {}, d = c.data, st = +(d.step || 1), au = d.auto || {};
+      if (!('step' in P)) {
+        const ds = Object.values(d.docs || {}).map(x => x.s || 'missing'), done = ds.some(x => x !== 'na') && ds.every(x => x === 'approved' || x === 'na');
+        let to = 0, m = '';
+        if (st === 1 && !au.s2 && done) { to = 2; m = 'Tự chuyển sang bước 2: Nộp I-129 · Phỏng vấn – đã đủ chứng từ được duyệt'; }
+        else if (st === 2 && !au.s3 && d.ms && d.ms.result === 'pass') { to = 3; m = 'Tự chuyển sang bước 3: Nhận visa L-1A – đậu phỏng vấn'; }
+        if (to) { d.step = to; d.auto = Object.assign({}, au, { ['s' + to]: t }); c.log = [{ t, by: 'Hệ thống', m }].concat(c.log || []).slice(0, 60); }
+      }
       emit('clients'); return { data: null, error: null };
     },
     storage: { from: () => ({
