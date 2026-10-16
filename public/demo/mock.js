@@ -91,6 +91,13 @@
       { id: 3, email: 'luatsu@idcvietnam.vn', at: new Date(Date.now() - 35 * 60e3).toISOString(), kind: 'login', device: 'Máy tính · Chrome · macOS' },
       { id: 2, email: 'quanghuy@idcvietnam.vn', at: new Date(Date.now() - 3 * 3600e3).toISOString(), kind: 'open', device: 'Điện thoại · Safari · iOS' },
       { id: 1, email: 'lananh@idcvietnam.vn', at: new Date(Date.now() - 26 * 3600e3).toISOString(), kind: 'login', device: 'Máy tính · Cốc Cốc · Windows' }],
+    chat_rooms: [{ id: 'r-case-0101', kind: 'case', client_id: 'L1A-0101', members: [], created_by: 'lananh@idcvietnam.vn', created_at: new Date(Date.now() - 864e5).toISOString(), last_at: new Date(Date.now() - 50 * 60e3).toISOString(), last_text: 'Khách hẹn thứ 2 gửi bằng chứng góp vốn đợt 2 ạ.', last_by: 'lananh@idcvietnam.vn' },
+      { id: 'r-grp-1', kind: 'group', name: 'Team hồ sơ L-1A', members: [ME, 'lananh@idcvietnam.vn', 'quanghuy@idcvietnam.vn', 'luatsu@idcvietnam.vn'], created_by: ME, created_at: new Date(Date.now() - 3 * 864e5).toISOString(), last_at: new Date(Date.now() - 3 * 3600e3).toISOString(), last_text: 'Chiều nay họp review 4 hồ sơ nhé mọi người.', last_by: 'quanghuy@idcvietnam.vn' }],
+    chat_messages: [
+      { id: 1, room_id: 'r-case-0101', author: 'luatsu@idcvietnam.vn', body: '@Lan Anh Bằng chứng góp vốn VN-14 cần thêm sao kê chuyển tiền đợt 2.', mentions: ['lananh@idcvietnam.vn'], created_at: new Date(Date.now() - 2 * 3600e3).toISOString() },
+      { id: 2, room_id: 'r-case-0101', author: 'lananh@idcvietnam.vn', body: 'Khách hẹn thứ 2 gửi bằng chứng góp vốn đợt 2 ạ.', mentions: [], created_at: new Date(Date.now() - 50 * 60e3).toISOString() },
+      { id: 3, room_id: 'r-grp-1', author: 'quanghuy@idcvietnam.vn', body: 'Chiều nay họp review 4 hồ sơ nhé mọi người.', mentions: [], created_at: new Date(Date.now() - 3 * 3600e3).toISOString() }],
+    chat_reads: [],
     clients, files, settings: [{ key: 'notify', value: { enabled: true, from: 'IDC VIETNAM <thongbao@ditruidc.com>', portal: 'https://hoso.ditruidc.com', instant: [], digest: ['bangiamdoc@idcvietnam.vn'], email: true, zalo: true, zalo_groups: [] } }]
   };
 
@@ -164,6 +171,26 @@
       }
       if (fn === 'trash_expired') return { data: DB.files.filter(x => x.deleted_at && Date.now() - Date.parse(x.deleted_at) > 60 * 864e5).map(x => ({ id: x.id, storage_path: x.storage_path })), error: null };
       if (fn === 'purge_files') { const ids = a.p_ids || []; for (let i = DB.files.length - 1; i >= 0; i--) if (ids.includes(DB.files[i].id) && DB.files[i].deleted_at) DB.files.splice(i, 1); emit('files'); return { data: ids.length, error: null }; }
+      if (fn.startsWith('chat_')) {
+        const t = new Date().toISOString(), R2 = DB.chat_rooms, M = DB.chat_messages;
+        const room = id => R2.find(r => r.id === id);
+        const push = r => { R2.unshift(r); listeners.filter(l => l.table === 'chat_rooms').forEach(l => l.cb({})); return r.id; };
+        if (fn === 'chat_unread') { const out = {}; M.forEach(m => { if (m.author === ME) return; const rd = DB.chat_reads.find(x => x.room_id === m.room_id); if (!rd || m.created_at > rd.read_at) out[m.room_id] = (out[m.room_id] || 0) + 1; }); return { data: Object.entries(out).map(([room_id, n]) => ({ room_id, n })), error: null }; }
+        if (fn === 'chat_mark_read') { const rd = DB.chat_reads.find(x => x.room_id === a.p_room); if (rd) rd.read_at = t; else DB.chat_reads.push({ room_id: a.p_room, email: ME, read_at: t }); return { data: null, error: null }; }
+        if (fn === 'chat_case_room') { const r = R2.find(x => x.kind === 'case' && x.client_id === a.p_client); return { data: r ? r.id : push({ id: 'r-case-' + a.p_client, kind: 'case', client_id: a.p_client, members: [], created_by: ME, created_at: t, last_at: t }), error: null }; }
+        if (fn === 'chat_dm_room') { const pair = [ME, a.p_email].sort(); const r = R2.find(x => x.kind === 'dm' && x.members[0] === pair[0] && x.members[1] === pair[1]); return { data: r ? r.id : push({ id: 'r-dm-' + Math.random().toString(36).slice(2), kind: 'dm', members: pair, created_by: ME, created_at: t, last_at: t }), error: null }; }
+        if (fn === 'chat_create_group') { if (!String(a.p_name || '').trim()) return { error: { message: 'Nhập tên nhóm' } }; return { data: push({ id: 'r-grp-' + Math.random().toString(36).slice(2), kind: 'group', name: a.p_name.trim(), members: [...new Set([ME, ...(a.p_members || [])])].sort(), created_by: ME, created_at: t, last_at: t }), error: null }; }
+        if (fn === 'chat_update_group') { const r = room(a.p_room); if (r) { r.name = a.p_name || r.name; r.members = [...new Set([r.created_by, ...(a.p_members || [])])].sort(); } return { data: null, error: null }; }
+        if (fn === 'chat_leave_group') { const r = room(a.p_room); if (r) r.members = r.members.filter(e => e !== ME); return { data: null, error: null }; }
+        if (fn === 'chat_send') {
+          const r = room(a.p_room); if (!r) return { error: { message: 'Không tìm thấy cuộc trò chuyện' } };
+          const m = { id: M.length ? Math.max(...M.map(x => x.id)) + 1 : 1, room_id: r.id, author: ME, body: String(a.p_body).trim(), mentions: a.p_mentions || [], created_at: t };
+          M.push(m); r.last_at = t; r.last_text = m.body.slice(0, 160); r.last_by = ME;
+          listeners.filter(l => l.table === 'chat_messages').forEach(l => l.cb({ eventType: 'INSERT', new: clone(m) }));
+          if (!window.__demoChatReply) { window.__demoChatReply = 1; setTimeout(() => { const other = r.kind === 'dm' ? r.members.find(e => e !== ME) : 'lananh@idcvietnam.vn'; const rep = { id: Math.max(...M.map(x => x.id)) + 1, room_id: r.id, author: other, body: 'Đã nhận, em xử lý ngay ạ 👍', mentions: [], created_at: new Date().toISOString() }; M.push(rep); r.last_at = rep.created_at; r.last_text = rep.body; r.last_by = other; listeners.filter(l => l.table === 'chat_messages').forEach(l => l.cb({ eventType: 'INSERT', new: clone(rep) })); }, 2500); }
+          return { data: m.id, error: null };
+        }
+      }
       if (fn === 'notify_test') return { data: ME + ' (bản xem thử không gửi thư thật)', error: null };
       if (fn !== 'patch_client') return { error: { message: 'Không hỗ trợ' } };
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };

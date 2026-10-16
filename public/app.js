@@ -1,6 +1,6 @@
 
 /* ---------- helpers ---------- */
-const P={cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+const P={chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 down:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
@@ -171,7 +171,7 @@ async function initRuntime(){
 }
 let channel=null;
 async function afterAuth(){
-  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}presenceStop();bellReset();render();return}
+  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}presenceStop();chatReset();bellReset();render();return}
   R.email=(R.session.user.email||'').toLowerCase();R.ready=false;render();
   const me=await R.sb.from('staff').select('email,role,name').eq('email',R.email).maybeSingle();
   if(me.error||!me.data){R.role=null;R.canWrite=false;R.ready=true;R.err=me.error?{message:me.error.message}:{code:'not_staff'};render();return}
@@ -180,7 +180,7 @@ async function afterAuth(){
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadPeople();
   await loadClients();
-  logLogin();presenceStart();if(R.canWrite)loadTrash().then(()=>autoPurge());if(S.view==='trash')loadTrash();
+  logLogin();presenceStart();chatInit();if(R.canWrite)loadTrash().then(()=>autoPurge());if(S.view==='trash')loadTrash();
   bellStart();if(R.isAdmin)loadLogins();
   if(S.view==='admin')loadStaff();
   if(S.view==='report')loadReportFiles();
@@ -943,7 +943,7 @@ function vCase(){
       <div style="min-width:0"><div class="eyebrow">Hồ sơ ${esc(c.id)} · L-1A → EB-1C</div><h1>${esc(c.name||'—')}</h1>
         <div class="meta meta2">${[[c.company,'Công ty','folder'],[c.us?c.us+(c.state?' · '+stateLabel(c.state):''):'','Công ty tại Mỹ'],[c.otherCo||'',c.otherCountry?'Công ty tại '+c.otherCountry:'Công ty nước khác'],['IDC VIETNAM','Đơn vị tư vấn'],[c.staff,'Chuyên viên tư vấn'],[c.opt&&c.opt!=='?'?optLabel(c.opt):'','Phương án']].filter(([v])=>v&&String(v).trim()).map(([v,l,ic])=>`<span>${ic?I(ic,14):''}<em>${l}</em><b>${esc(v)}</b></span>`).join('')}</div>
         <div class="assign">${I('users',14)}<b>Phụ trách xử lý:</b>${assigneesOf(c).length?assigneesOf(c).map(e=>{const u=(R.people||[]).find(x=>x.email===e);return `<span class="who-chip ${u&&u.role==='lawyer'?'law':''}">${esc(personName(e))}<em>${u&&u.role==='lawyer'?'Luật sư':'Nhân viên'}</em></span>`}).join(''):'<span class="dnote">Chưa phân công</span>'}${(()=>{const tm=caseTiming(c);return tm.due?`<span class="pill ${stPill[tm.st]}" title="Hạn hoàn thiện chứng từ">${I('clock',12)} Hạn ${fmtDate(new Date(tm.due).toISOString())} · ${esc(tm.label)}</span>`:''})()}${R.isAdmin?`<button class="btn asg-cta" data-act="assign">${I('users',15)}Phân công xử lý</button>`:''}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn primary" data-act="zip">${I('zip')}Tải trọn bộ ZIP</button><button class="btn doc-ok" data-act="receipt">${I('file')}Biên bản tiếp nhận</button><button class="btn chat-btn" data-chatcase="${esc(c.id)}">${I('chat',15)}Trao đổi hồ sơ${(()=>{const r=chatRoomOf('case',c.id);const n=r?CH.unread[r.id]||0:0;return n?`<span class="ch-n">${n}</span>`:''})()}</button><button class="btn doc-wt" data-act="notice">${I('mail')}Thông báo bổ sung</button><button class="btn" data-act="checklistCsv">${I('sheet')}Checklist .csv</button>${R.canWrite?`<button class="btn" data-act="editClient">${I('edit')}Sửa thông tin</button>`:''}</div>
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
@@ -1123,3 +1123,150 @@ document.addEventListener('change',e=>{const t=e.target;if(!t)return;
   if(t.id==='pg-per'){PG.per=+t.value;S.page=1;render();return}
   if(t.dataset&&t.dataset.col){const on=new Set(PG.cols);t.checked?on.add(t.dataset.col):on.delete(t.dataset.col);PG.cols=CL_COLS.filter(x=>on.has(x.k)).map(x=>x.k);render()}});
 document.addEventListener('click',e=>{if(S.colOpen&&!e.target.closest('.pg-cust')){S.colOpen=false;render()}});
+
+/* ---------- Trao đổi (chat) ---------- */
+const CH={open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
+const chatTot=()=>Object.values(CH.unread).reduce((a,b)=>a+b,0);
+function chatRoomOf(kind,key){return CH.rooms.find(r=>r.kind===kind&&(kind==='case'?r.client_id===key:false))}
+function chatTitle(r){if(!r)return'';if(r.kind==='case'){const c=getC(r.client_id);return `${r.client_id}${c&&c.name?' · '+c.name:''}`}if(r.kind==='group')return r.name||'Nhóm';const o=(r.members||[]).find(e=>e!==R.email);return personName(o)}
+function chatPeople(r){if(!r)return[];const adm=(R.people||[]).filter(p=>p.role==='admin').map(p=>p.email);let l=[];
+  if(r.kind==='case'){const c=getC(r.client_id);l=[...assigneesOf(c||{}),...adm]}else l=r.members||[];return [...new Set(l.map(e=>String(e).toLowerCase()))]}
+async function chatInit(){
+  if(CH.ready||!R.sb||!R.email)return;CH.ready=true;
+  ensureChatDom();await chatLoadRooms();await chatLoadUnread();
+  R.sb.channel('idc-chat').on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages'},p=>chatLive(p.new))
+    .on('postgres_changes',{event:'*',schema:'public',table:'chat_rooms'},()=>chatLoadRooms().then(chatRender)).subscribe();
+  chatRender();
+}
+function chatReset(){CH.ready=false;CH.open=false;CH.room=null;CH.rooms=[];CH.msgs={};CH.unread={};const f=document.getElementById('chatfab');if(f)f.hidden=true;const p=document.getElementById('chatpanel');if(p)p.hidden=true}
+async function chatLoadRooms(){const r=await R.sb.from('chat_rooms').select('*').order('last_at',{ascending:false});if(r.error){CH.err=r.error.message;return}CH.err='';CH.rooms=(r.data||[]).map(x=>Object.assign(x,{members:(x.members||[]).map(e=>String(e).toLowerCase())}))}
+async function chatLoadUnread(){const r=await R.sb.rpc('chat_unread');if(r.error)return;CH.unread={};(r.data||[]).forEach(x=>{CH.unread[x.room_id]=+x.n});chatBadge()}
+async function chatLoadMsgs(id){const r=await R.sb.from('chat_messages').select('*').eq('room_id',id).order('id',{ascending:false}).limit(150);if(r.error){toast(dbErr(r.error));return}CH.msgs[id]=(r.data||[]).slice().reverse()}
+async function chatOpenRoom(id){CH.room=id;CH.open=true;CH.newGroup=false;CH.edit=false;CH.ment=new Map();chatRender();if(!CH.msgs[id])await chatLoadMsgs(id);delete CH.unread[id];chatBadge();chatRender(true);R.sb.rpc('chat_mark_read',{p_room:id})}
+async function chatOpenCase(cid){const ex=chatRoomOf('case',cid);if(ex)return chatOpenRoom(ex.id);const r=await R.sb.rpc('chat_case_room',{p_client:cid});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
+async function chatOpenDm(email){const r=await R.sb.rpc('chat_dm_room',{p_email:email});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
+function chatLive(m){
+  if(!m)return;const room=CH.rooms.find(r=>r.id===m.room_id);
+  if(!room){chatLoadRooms().then(()=>{if(CH.rooms.find(r=>r.id===m.room_id))chatLive(m)});return}
+  room.last_at=m.created_at;room.last_text=String(m.body).slice(0,160);room.last_by=m.author;CH.rooms.sort((a,b)=>String(b.last_at).localeCompare(String(a.last_at)));
+  if(CH.msgs[m.room_id]&&!CH.msgs[m.room_id].some(x=>x.id===m.id))CH.msgs[m.room_id].push(m);
+  const mine=String(m.author).toLowerCase()===R.email;
+  if(CH.open&&CH.room===m.room_id&&!document.hidden){if(!mine)R.sb.rpc('chat_mark_read',{p_room:m.room_id});chatRender(true);return}
+  if(!mine){CH.unread[m.room_id]=(CH.unread[m.room_id]||0)+1;chatBadge();
+    const ment=(m.mentions||[]).map(e=>String(e).toLowerCase()).includes(R.email);
+    const msg=`${personName(m.author)}${ment?' nhắc bạn':''} · ${chatTitle(room)}: ${String(m.body).slice(0,90)}`;
+    if(document.hidden&&('Notification' in window)&&Notification.permission==='granted'){try{const n=new Notification('IDC Portal · Tin nhắn',{body:msg,tag:'idc-chat-'+m.room_id});n.onclick=()=>{window.focus();chatOpenRoom(m.room_id);n.close()}}catch(_){}}
+    else if(!(CH.open&&CH.room===m.room_id))toast(msg)}
+  chatRender();
+}
+function chatBadge(){const f=document.getElementById('chatfab');if(!f)return;const n=chatTot();f.hidden=!(R.email&&R.role&&!R.err);const b=f.querySelector('.cf-n');b.textContent=n>99?'99+':String(n);b.hidden=!n;f.setAttribute('aria-label',n?`Trao đổi: ${n} tin chưa đọc`:'Trao đổi')}
+function ensureChatDom(){
+  if(document.getElementById('chatfab'))return;
+  const f=document.createElement('button');f.type='button';f.id='chatfab';f.className='chatfab';f.hidden=true;f.innerHTML=`${I('chat',22)}<span class="cf-l">Trao đổi</span><span class="cf-n" hidden></span>`;document.body.appendChild(f);
+  const p=document.createElement('section');p.id='chatpanel';p.className='chatpanel';p.hidden=true;p.setAttribute('aria-label','Trao đổi');document.body.appendChild(p);
+}
+const chatTime=t=>{const d=new Date(t),n=new Date(),p=x=>String(x).padStart(2,'0');return d.toDateString()===n.toDateString()?`${p(d.getHours())}:${p(d.getMinutes())}`:`${p(d.getDate())}/${p(d.getMonth()+1)}`};
+function chatBodyHTML(m,room){let h=esc(m.body);const ppl=chatPeople(room).concat(m.mentions||[]);
+  [...new Set(ppl)].map(e=>personName(e)).filter(Boolean).sort((a,b)=>b.length-a.length).forEach(nm=>{const k='@'+esc(nm);h=h.split(k).join(`<b class="cm-ment">${k}</b>`)});
+  return h.replace(/\n/g,'<br>').replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}
+function chatListHTML(){
+  const un=id=>CH.unread[id]||0;
+  const tabs=[['case','Hồ sơ'],['group','Nhóm'],['dm','Riêng']].map(([k,l])=>{const n=CH.rooms.filter(r=>r.kind===k).reduce((a,r)=>a+un(r.id),0);return `<button class="ch-tab${CH.tab===k?' on':''}" data-chtab="${k}">${l}${n?`<span class="ch-n">${n}</span>`:''}</button>`}).join('');
+  const item=(id,title,sub,last,at,n,av,attr)=>`<button class="ch-item${n?' un':''}" ${attr}><span class="ch-av ${av.cls}">${av.t}</span><span class="ch-mid"><b>${esc(title)}</b><span>${last?esc(last):`<i>${esc(sub)}</i>`}</span></span><span class="ch-end">${at?`<time>${chatTime(at)}</time>`:''}${n?`<span class="ch-n">${n}</span>`:''}</span></button>`;
+  let body='';
+  if(CH.tab==='case'){
+    const cs=R.clients.slice().sort((a,b)=>{const ra=chatRoomOf('case',a.id),rb=chatRoomOf('case',b.id);return String(rb?rb.last_at:'').localeCompare(String(ra?ra.last_at:''))||a.id.localeCompare(b.id)});
+    body=cs.length?cs.map(c=>{const r=chatRoomOf('case',c.id);const lb=r&&r.last_text?`${r.last_by===R.email?'Bạn':personName(r.last_by)}: ${r.last_text}`:'';return item(c.id,`${c.id} · ${c.name||''}`,'Chưa có trao đổi',lb,r&&r.last_text?r.last_at:'',r?un(r.id):0,{cls:'case',t:esc(initials(c.name))},`data-chcase="${esc(c.id)}"`)}).join(''):'<div class="ch-empty">Bạn chưa được phân hồ sơ nào.</div>';
+  }else if(CH.tab==='group'){
+    const gs=CH.rooms.filter(r=>r.kind==='group');
+    body=(CH.newGroup?chatGroupForm(null):`<button class="ch-new" data-chnewgroup>${I('plus',15)}Tạo nhóm mới</button>`)+
+      (gs.length?gs.map(r=>item(r.id,r.name||'Nhóm',`${r.members.length} thành viên`,r.last_text?`${r.last_by===R.email?'Bạn':personName(r.last_by)}: ${r.last_text}`:'',r.last_text?r.last_at:'',un(r.id),{cls:'grp',t:I('users',16)},`data-chroom="${r.id}"`)).join(''):(CH.newGroup?'':'<div class="ch-empty">Chưa có nhóm nào. Tạo nhóm để trao đổi chung với nhiều người.</div>'));
+  }else{
+    const dms=CH.rooms.filter(r=>r.kind==='dm');const withDm=new Set(dms.map(r=>(r.members||[]).find(e=>e!==R.email)));
+    const others=(R.people||[]).filter(p=>p.email!==R.email&&!withDm.has(p.email));
+    body=dms.map(r=>{const o=(r.members||[]).find(e=>e!==R.email);return item(r.id,personName(o),'',r.last_text?`${r.last_by===R.email?'Bạn: ':''}${r.last_text}`:'',r.last_text?r.last_at:'',un(r.id),{cls:'dm',t:esc(initials(personName(o)))},`data-chroom="${r.id}"`)}).join('')+
+      (others.length?`<div class="ch-sec">Bắt đầu nhắn riêng</div>`+others.map(p=>item(p.email,personName(p.email),ROLE_VI[p.role]||'','','',0,{cls:'dm off',t:esc(initials(personName(p.email)))},`data-chdm="${esc(p.email)}"`)).join(''):'');
+  }
+  return `<div class="ch-h"><b>Trao đổi</b><button class="icon-btn" data-chclose aria-label="Đóng">${I('x')}</button></div><div class="ch-tabs" role="tablist">${tabs}</div>${CH.err?`<div class="banner warn" style="margin:10px">${I('alert')}<div>Chưa cài phần Trao đổi trên Supabase (chạy supabase/chat.sql). <span class="dnote">${esc(CH.err)}</span></div></div>`:''}<div class="ch-list">${body}</div>`;
+}
+function chatGroupForm(r){
+  const sel=new Set(r?r.members:[R.email]);
+  return `<form class="ch-gform" id="chgform" data-room="${r?r.id:''}"><label class="dnote" for="chg-name">Tên nhóm</label><input id="chg-name" value="${esc(r?r.name||'':'')}" placeholder="VD: Team hồ sơ TP.HCM" maxlength="80" required>
+    <div class="dnote" style="margin-top:8px">Thành viên</div><div class="ch-gpeople">${(R.people||[]).map(p=>`<label><input type="checkbox" value="${esc(p.email)}" ${sel.has(p.email)?'checked':''} ${p.email===R.email&&!r?'disabled':''}>${esc(personName(p.email))} <span class="dnote">${esc(ROLE_VI[p.role]||'')}</span></label>`).join('')}</div>
+    <div class="ch-gact"><button type="button" class="btn sm" data-chgcancel>Huỷ</button><button class="btn sm primary" type="submit">${r?'Lưu':'Tạo nhóm'}</button></div></form>`;
+}
+function chatThreadHTML(){
+  const r=CH.rooms.find(x=>x.id===CH.room);if(!r){CH.room=null;return chatListHTML()}
+  const ms=CH.msgs[r.id];const ppl=chatPeople(r);
+  const sub=r.kind==='case'?`${ppl.length} người · người phụ trách + Quản trị`:r.kind==='group'?`${r.members.length} thành viên`:'Tin nhắn riêng';
+  const canEdit=r.kind==='group'&&(R.isAdmin||r.created_by===R.email);
+  let last='',html='';
+  (ms||[]).forEach(m=>{const d=new Date(m.created_at).toDateString();if(d!==last){last=d;html+=`<div class="cm-day"><span>${fmtDate(m.created_at)}</span></div>`}
+    const mine=String(m.author).toLowerCase()===R.email;
+    html+=`<div class="cm${mine?' me':''}">${mine?'':`<span class="ch-av sm">${esc(initials(personName(m.author)))}</span>`}<div class="cm-b">${mine?'':`<b>${esc(personName(m.author))}</b>`}<div class="cm-t">${chatBodyHTML(m,r)}</div><time>${chatTime(m.created_at)}</time></div></div>`});
+  return `<div class="ch-h"><button class="icon-btn" data-chback aria-label="Quay lại">${I('chl',18)}</button><div class="ch-ht"><b>${esc(chatTitle(r))}</b><span title="${esc(ppl.map(personName).join(', '))}">${esc(sub)}</span></div>${r.kind==='case'?`<button class="icon-btn" data-open="${esc(r.client_id)}" title="Mở hồ sơ">${I('folder',16)}</button>`:''}${canEdit?`<button class="icon-btn" data-chedit title="Sửa nhóm">${I('edit',16)}</button>`:''}${r.kind==='group'&&!canEdit&&r.members.includes(R.email)?`<button class="icon-btn" data-chleave title="Rời nhóm">${I('undo',16)}</button>`:''}<button class="icon-btn" data-chclose aria-label="Đóng">${I('x')}</button></div>
+    ${CH.edit?chatGroupForm(r):''}
+    <div class="ch-msgs" id="ch-msgs">${ms?(html||`<div class="ch-empty">Chưa có tin nhắn. Gõ <b>@</b> để nhắc tên người cần đọc.</div>`):'<div class="ch-empty">Đang tải…</div>'}</div>
+    <form class="ch-in" id="chform"><div class="ch-sugg" id="ch-sugg" hidden></div><textarea id="ch-text" rows="1" placeholder="Nhập tin nhắn… (gõ @ để nhắc tên, Enter để gửi)" maxlength="4000"></textarea><button class="btn primary" type="submit" aria-label="Gửi">${I('send',16)}</button></form>`;
+}
+function chatRender(scroll){
+  chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open;if(!CH.open)return;
+  const ta=document.getElementById('ch-text');const draft=ta?ta.value:'';const hadFocus=document.activeElement===ta;const box=document.getElementById('ch-msgs');const atBottom=!box||box.scrollHeight-box.scrollTop-box.clientHeight<60;
+  p.innerHTML=CH.room?chatThreadHTML():chatListHTML();
+  const t2=document.getElementById('ch-text');if(t2){t2.value=draft;if(hadFocus||scroll)t2.focus();chatGrow(t2)}
+  const b2=document.getElementById('ch-msgs');if(b2&&(scroll||atBottom))b2.scrollTop=b2.scrollHeight;
+}
+const chatGrow=t=>{t.style.height='auto';t.style.height=Math.min(140,t.scrollHeight)+'px'};
+async function chatSend(){
+  const t=document.getElementById('ch-text');const body=(t.value||'').trim();if(!body||!CH.room)return;
+  const ments=[...CH.ment.entries()].filter(([nm])=>body.includes('@'+nm)).map(([,e])=>e);
+  t.value='';chatGrow(t);CH.ment=new Map();
+  const r=await R.sb.rpc('chat_send',{p_room:CH.room,p_body:body,p_mentions:ments});
+  if(r.error){toast(dbErr(r.error));t.value=body;return}
+  if(!CH.msgs[CH.room]||!CH.msgs[CH.room].some(x=>x.id===r.data)){await chatLoadMsgs(CH.room)}
+  chatRender(true);
+}
+function chatSuggest(t){
+  const box=document.getElementById('ch-sugg');if(!box)return;const pos=t.selectionStart,before=t.value.slice(0,pos),m=/(^|\s)@([^\s@]*)$/.exec(before);
+  if(!m){box.hidden=true;CH.sugg=null;return}
+  const q=m[2].toLowerCase();const r=CH.rooms.find(x=>x.id===CH.room);
+  const list=chatPeople(r).filter(e=>e!==R.email).map(e=>({e,n:personName(e)})).filter(x=>!q||x.n.toLowerCase().includes(q)||x.e.includes(q)).slice(0,6);
+  if(!list.length){box.hidden=true;CH.sugg=null;return}
+  CH.sugg={start:pos-m[2].length-1,end:pos,list,i:0};
+  box.innerHTML=list.map((x,i)=>`<button type="button" class="${i===0?'on':''}" data-chment="${i}"><span class="ch-av sm">${esc(initials(x.n))}</span>${esc(x.n)}</button>`).join('');box.hidden=false;
+}
+function chatPick(i){const t=document.getElementById('ch-text');const s=CH.sugg;if(!t||!s)return;const x=s.list[i];const ins='@'+x.n+' ';
+  t.value=t.value.slice(0,s.start)+ins+t.value.slice(s.end);const c=s.start+ins.length;t.setSelectionRange(c,c);t.focus();CH.ment.set(x.n,x.e);CH.sugg=null;document.getElementById('ch-sugg').hidden=true}
+document.addEventListener('click',async e=>{
+  const g=s=>e.target.closest(s);
+  if(g('#chatfab')){CH.open=!CH.open;if(CH.open&&!CH.room)chatLoadUnread();chatRender(true);return}
+  if(!g('#chatpanel')&&!g('[data-chatcase]'))return;
+  let b;
+  if((b=g('[data-chatcase]'))){chatOpenCase(b.dataset.chatcase);return}
+  if(g('[data-chclose]')){CH.open=false;chatRender();return}
+  if(g('[data-chback]')){CH.room=null;CH.edit=false;chatRender();return}
+  if((b=g('[data-chtab]'))){CH.tab=b.dataset.chtab;CH.newGroup=false;chatRender();return}
+  if((b=g('[data-chcase]'))){chatOpenCase(b.dataset.chcase);return}
+  if((b=g('[data-chroom]'))){chatOpenRoom(b.dataset.chroom);return}
+  if((b=g('[data-chdm]'))){chatOpenDm(b.dataset.chdm);return}
+  if(g('[data-chnewgroup]')){CH.newGroup=true;chatRender();setTimeout(()=>{const n=document.getElementById('chg-name');n&&n.focus()},0);return}
+  if(g('[data-chgcancel]')){CH.newGroup=false;CH.edit=false;chatRender();return}
+  if(g('[data-chedit]')){CH.edit=!CH.edit;chatRender();return}
+  if(g('[data-chleave]')){const r=await R.sb.rpc('chat_leave_group',{p_room:CH.room});if(r.error){toast(dbErr(r.error));return}CH.room=null;await chatLoadRooms();chatRender();toast('Đã rời nhóm');return}
+  if((b=g('[data-chment]'))){chatPick(+b.dataset.chment);return}
+});
+document.addEventListener('submit',async e=>{
+  if(e.target.id==='chform'){e.preventDefault();chatSend();return}
+  if(e.target.id==='chgform'){e.preventDefault();const f=e.target;const name=f.querySelector('#chg-name').value.trim();const mem=[...f.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);const rid=f.dataset.room;
+    const r=rid?await R.sb.rpc('chat_update_group',{p_room:rid,p_name:name,p_members:mem}):await R.sb.rpc('chat_create_group',{p_name:name,p_members:mem});
+    if(r.error){toast(dbErr(r.error));return}CH.newGroup=false;CH.edit=false;await chatLoadRooms();if(!rid&&r.data)chatOpenRoom(r.data);else chatRender();toast(rid?'Đã lưu nhóm':'Đã tạo nhóm '+name)}
+});
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='ch-text'){chatGrow(e.target);chatSuggest(e.target)}});
+document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='ch-text'){
+    if(CH.sugg){if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();CH.sugg.i=(CH.sugg.i+(e.key==='ArrowDown'?1:CH.sugg.list.length-1))%CH.sugg.list.length;document.querySelectorAll('#ch-sugg button').forEach((b,i)=>b.classList.toggle('on',i===CH.sugg.i));return}
+      if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();chatPick(CH.sugg.i);return}if(e.key==='Escape'){CH.sugg=null;document.getElementById('ch-sugg').hidden=true;return}}
+    if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();chatSend()}}
+  else if(e.key==='Escape'&&CH.open&&!BELL.open){CH.open=false;chatRender()}
+});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&CH.open&&CH.room&&CH.unread[CH.room]){delete CH.unread[CH.room];chatBadge();R.sb.rpc('chat_mark_read',{p_room:CH.room})}});
