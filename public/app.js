@@ -602,7 +602,7 @@ function vClients(){
         <td class="r num"><b>${s.rcv}</b><span class="muted">/${s.req}</span></td>
         <td class="r">${s.missing?`<span class="count-bad num">${s.missing}</span>`:`<span class="count-ok">${I('check',12)}</span>`}</td>
         <td class="r num">${s.review||'—'}</td>
-        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}</td>
+        <td>${esc(c.staff||'—')}${assigneesOf(c).length?`<div class="dnote">${esc(assigneesOf(c).map(personName).join(', '))}</div>`:(R.isAdmin?'<div class="dnote" style="color:var(--warn)">Chưa phân công</div>':'')}${R.isAdmin?`<button class="btn sm asg-btn" data-assignopen="${esc(c.id)}">${I('users',13)}Phân công</button>`:''}</td>
         <td class="dnote">${fmtTime(c.updatedAt)||'—'}</td></tr>`}).join(''):`<tr><td colspan="9" class="empty">Không có hồ sơ khớp bộ lọc.</td></tr>`}</tbody>
     </table></div>
   </section>`:vEmpty()}`;
@@ -751,6 +751,7 @@ document.addEventListener('click',async e=>{
   if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin')loadStaff();if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
   if(ds.staffdel){const r=await R.sb.from('staff').delete().eq('email',ds.staffdel);if(r.error)toast(dbErr(r.error));else{toast('Đã gỡ '+ds.staffdel);loadStaff()}return}
   if(ds.docdel!==undefined){t.closest('tr').remove();return}
+  if(ds.assignopen){S.view='case';S.client=ds.assignopen;S.tab='missing';setHash();render();setTimeout(()=>openDrawer('assign'),50);return}
   if(ds.open){S.view='case';S.client=ds.open;S.tab=stats(getC(ds.open)).missing?'missing':'review';S.q='';$('q').value='';setHash();render();window.scrollTo(0,0);return}
   if(ds.filter){S.filter=ds.filter;return render()}
   if(ds.tab){S.tab=ds.tab;return render()}
