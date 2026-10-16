@@ -551,3 +551,25 @@ html[lang="en"] .dept-en{display:none}
 .banner.bad{background:#FBECE8;border-color:#F0C4B8;color:#7A2414}.banner.bad .i{stroke:#A3402B}
 .banner.blue{background:#E6EFF9;border-color:#B9D0EC;color:#163F70}.banner.blue .i{stroke:#1F5FA6}
 @media (max-width:900px){.ms-body{grid-template-columns:1fr}.ms-form{grid-template-columns:1fr}.ms-h{flex-direction:column;align-items:stretch}.ms-prog{align-items:stretch}}
+
+/* ---------- online & nhật ký đăng nhập ---------- */
+.lg-grid{display:grid;grid-template-columns:minmax(240px,4fr) minmax(0,8fr);gap:20px;align-items:start}
+.lg-t{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:700;color:#0F1F0F}
+.ol-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#E8F3E6;color:#17631A;font-size:11.5px;font-weight:800}
+.ol-list{display:grid;gap:8px}
+.ol-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #DCE6D8;border-radius:10px;background:#F7FAF5}
+.ol-item>div{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:12.5px}
+.ol-item b{font-size:13px}
+.ol-dot{width:10px;height:10px;margin-top:4px;border-radius:50%;background:#22A04B;box-shadow:0 0 0 3px rgba(34,160,75,.18);flex:none;animation:olp 2s infinite}
+.ol-item.away .ol-dot{background:#E0A800;box-shadow:0 0 0 3px rgba(224,168,0,.18);animation:none}
+@keyframes olp{50%{box-shadow:0 0 0 6px rgba(34,160,75,.05)}}
+.ol-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#5B675A;background:#F1F4F0;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.ol-pill.on{color:#0E4A22;background:#E3F3E3}
+.ol-pill.on i{width:7px;height:7px;border-radius:50%;background:#22A04B}
+.lg-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.lg-head select{border:1px solid var(--border-strong);border-radius:8px;padding:5px 8px;background:var(--bg)}
+.lg-head span:last-child{margin-left:auto}
+.bp-sec{padding:8px 14px 4px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6B766A;border-top:1px solid var(--border)}
+.bp-dot.login{background:#22A04B}
+@media (max-width:900px){.lg-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.ol-dot{animation:none}}

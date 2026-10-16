@@ -171,7 +171,7 @@ async function initRuntime(){
 }
 let channel=null;
 async function afterAuth(){
-  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}bellReset();render();return}
+  if(!R.session){R.email=null;R.clients=[];R.files={};R.ready=true;if(channel){R.sb.removeChannel(channel);channel=null}presenceStop();bellReset();render();return}
   R.email=(R.session.user.email||'').toLowerCase();R.ready=false;render();
   const me=await R.sb.from('staff').select('email,role,name').eq('email',R.email).maybeSingle();
   if(me.error||!me.data){R.role=null;R.canWrite=false;R.ready=true;R.err=me.error?{message:me.error.message}:{code:'not_staff'};render();return}
@@ -180,13 +180,15 @@ async function afterAuth(){
   if(st.data&&st.data.value)applyProgram(st.data.value);
   await loadPeople();
   await loadClients();
-  bellStart();
+  logLogin();presenceStart();
+  bellStart();if(R.isAdmin)loadLogins();
   if(S.view==='admin')loadStaff();
   if(S.view==='report')loadReportFiles();
   if(!channel){channel=R.sb.channel('hoso-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'clients'},()=>loadClients())
-    .on('postgres_changes',{event:'*',schema:'public',table:'files'},p=>{const cid=(p.new&&p.new.client_id)||(p.old&&p.old.client_id);if(cid&&cid===R.filesFor)loadFiles(cid,true);bellLive(p)})
-    .subscribe()}
+    .on('postgres_changes',{event:'*',schema:'public',table:'files'},p=>{const cid=(p.new&&p.new.client_id)||(p.old&&p.old.client_id);if(cid&&cid===R.filesFor)loadFiles(cid,true);bellLive(p)});
+    if(R.isAdmin)channel.on('postgres_changes',{event:'INSERT',schema:'public',table:'login_log'},p=>loginLive(p.new));
+    channel.subscribe()}
 }
 async function loadPeople(){const r=await R.sb.from('staff').select('email,name,role').order('name');R.people=(r.data||[]).map(u=>Object.assign(u,{email:String(u.email).toLowerCase()}))}
 const personName=e=>{const u=(R.people||[]).find(x=>x.email===String(e||'').toLowerCase());return (u&&u.name)||String(e||'').split('@')[0]};
@@ -335,9 +337,50 @@ document.addEventListener('click',async e=>{
 });
 
 /* ---------- chuông thông báo: tệp mới do người khác tải lên ---------- */
-const BELL={items:[],seen:0,open:false,names:{},timer:null,poll:null,known:new Set()};
+/* ---------- đăng nhập & đang online ---------- */
+function deviceLabel(){const u=navigator.userAgent||'';const mob=/Mobi|Android|iPhone|iPad/i.test(u);
+  const br=/Edg\//.test(u)?'Edge':/OPR\/|Opera/.test(u)?'Opera':/CocCoc|coc_coc/i.test(u)?'Cốc Cốc':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Trình duyệt khác';
+  const os=/iPhone|iPad|iPod/.test(u)?'iOS':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS X|Macintosh/.test(u)?'macOS':/Linux/.test(u)?'Linux':'';
+  return [mob?'Điện thoại':'Máy tính',br,os].filter(Boolean).join(' · ')}
+let JUST_LOGGED=false;
+async function logLogin(){try{await R.sb.rpc('log_login',{p_kind:JUST_LOGGED?'login':'open',p_device:deviceLabel(),p_ua:(navigator.userAgent||'').slice(0,300)})}catch(_){}JUST_LOGGED=false}
+const ONLINE={ch:null,state:{},last:''};
+function presenceStart(){
+  if(ONLINE.ch||!R.sb||!R.email)return;
+  ONLINE.ch=R.sb.channel('idc-online',{config:{presence:{key:R.email}}});
+  ONLINE.ch.on('presence',{event:'sync'},()=>{ONLINE.state=ONLINE.ch.presenceState?ONLINE.ch.presenceState():{};if(R.isAdmin&&S.view==='admin')renderOnline()})
+    .subscribe(st=>{if(st==='SUBSCRIBED'){ONLINE.last='';presenceTrack()}});
+}
+function presenceStop(){if(ONLINE.ch){try{R.sb.removeChannel(ONLINE.ch)}catch(_){}ONLINE.ch=null;ONLINE.state={}}}
+function presenceTrack(){
+  if(!ONLINE.ch||!ONLINE.ch.track)return;
+  const view=S.view==='case'&&S.client?S.client:S.view;const key=view+'|'+(document.hidden?'away':'here');if(key===ONLINE.last)return;ONLINE.last=key;
+  ONLINE.ch.track({email:R.email,name:R.name||'',role:R.role,view,away:document.hidden,device:deviceLabel(),since:ONLINE.since||(ONLINE.since=new Date().toISOString())}).catch(()=>{});
+}
+document.addEventListener('visibilitychange',()=>presenceTrack());
+function onlineList(){const out=[];Object.values(ONLINE.state||{}).forEach(arr=>{const m=[].concat(arr).sort((a,b)=>String(b.since).localeCompare(String(a.since)))[0];if(m&&m.email)out.push(m)});return out.sort((a,b)=>String(a.name||a.email).localeCompare(String(b.name||b.email)))}
+const ROLE_VI={admin:'Quản trị',staff:'Nhân viên',lawyer:'Luật sư'};
+const viewLabel=v=>v==='clients'?'Danh sách hồ sơ':v==='admin'?'Quản trị':v==='report'?'Báo cáo':/^L1A|-\d+$/.test(v||'')?'Hồ sơ '+v:(v||'—');
+function onlineHTML(){const l=onlineList();
+  if(!l.length)return '<div class="dnote">Chưa có ai đang mở portal.</div>';
+  return `<div class="ol-list">${l.map(u=>`<div class="ol-item${u.away?' away':''}"><span class="ol-dot" aria-hidden="true"></span><div><b>${esc(u.name||personName(u.email))}${u.email===R.email?' <span class="dnote">(bạn)</span>':''}</b><span>${esc(ROLE_VI[u.role]||'')} · ${u.away?'Đang để portal ở tab khác':'Đang xem '+esc(viewLabel(u.view))}</span><span class="dnote">${esc(u.device||'')} · online từ ${esc(fmtTime(u.since).slice(-5))}</span></div></div>`).join('')}</div>`}
+function renderOnline(){const el=document.getElementById('ol-box');if(el)el.innerHTML=onlineHTML();const n=document.getElementById('ol-n');if(n)n.textContent=onlineList().length;
+  document.querySelectorAll('[data-olmail]').forEach(td=>{const on=onlineList().find(u=>u.email===td.dataset.olmail);td.innerHTML=on?`<span class="ol-pill on"><i></i>Đang online</span>`:lastSeenHTML(td.dataset.olmail)})}
+const lastSeenHTML=e=>{const r=(R.logins||[]).find(x=>String(x.email).toLowerCase()===e);return r?`<span class="ol-pill">${esc(relTime(Date.parse(r.at)))}</span>`:'<span class="dnote">Chưa đăng nhập</span>'};
+async function loadLogins(){if(!R.isAdmin)return;const r=await R.sb.from('login_log').select('*').order('at',{ascending:false}).limit(200);R.logins=r.error?null:(r.data||[]);R.loginsErr=r.error?r.error.message:'';if(S.view==='admin')render()}
+function loginLive(row){
+  if(!row||!row.email)return;row.email=String(row.email).toLowerCase();
+  R.logins=[row].concat((R.logins||[]).filter(x=>x.id!==row.id)).slice(0,200);
+  if(row.email===R.email)return;
+  BELL.logins=[row].concat(BELL.logins.filter(x=>x.id!==row.id)).slice(0,20);renderBell();
+  const msg=`${personName(row.email)} vừa ${row.kind==='login'?'đăng nhập':'mở lại'} portal${row.device?' · '+row.device:''}`;
+  if(document.hidden&&('Notification' in window)&&Notification.permission==='granted'){try{const n=new Notification('IDC Portal · Đăng nhập',{body:msg,tag:'idc-login-'+row.email});n.onclick=()=>{window.focus();n.close()}}catch(_){}}
+  else toast(msg);
+  if(S.view==='admin')render();
+}
+const BELL={items:[],logins:[],seen:0,open:false,names:{},timer:null,poll:null,known:new Set()};
 const bellKey=()=>'idc_bell_seen_'+(R.email||'');
-function bellReset(){BELL.items=[];BELL.open=false;BELL.known=new Set();clearInterval(BELL.poll);BELL.poll=null;renderBell()}
+function bellReset(){BELL.items=[];BELL.logins=[];BELL.open=false;BELL.known=new Set();clearInterval(BELL.poll);BELL.poll=null;renderBell()}
 function bellStart(){
   const meta=(R.session&&R.session.user&&R.session.user.user_metadata)||{};let ls=0;try{ls=Date.parse(localStorage.getItem(bellKey())||'')||0}catch(_){}
   /* lần đầu dùng: coi tệp trong 3 ngày gần nhất là chưa xem */
@@ -357,6 +400,7 @@ async function loadBell(first){
     else g.push({client:f.client_id,by,at,first:at,files:[f]})}
   const fresh=first?[]:r.data.filter(f=>!BELL.known.has(f.id)&&String(f.created_by||'').toLowerCase()!==R.email);
   r.data.forEach(f=>BELL.known.add(f.id));
+  if(R.isAdmin){const lg=await R.sb.from('login_log').select('*').gte('at',new Date(Date.now()-3*864e5).toISOString()).order('at',{ascending:false}).limit(40);if(!lg.error)BELL.logins=(lg.data||[]).map(x=>Object.assign(x,{email:String(x.email).toLowerCase()})).filter(x=>x.email!==R.email).slice(0,20)}
   BELL.items=g.slice(0,30);renderBell();
   if(fresh.length)bellDesktop(fresh);
 }
@@ -366,6 +410,7 @@ function bellLive(p){
 }
 const bellWho=by=>by===R.email?'Bạn':(BELL.names[by]||(by.split('@')[0])||'Ai đó');
 const bellUnread=()=>BELL.items.filter(x=>x.by!==R.email&&x.at>BELL.seen);
+const bellLoginUnread=()=>R.isAdmin?BELL.logins.filter(x=>Date.parse(x.at)>BELL.seen):[];
 function relTime(t){const s=(Date.now()-t)/1000;if(s<60)return'vừa xong';if(s<3600)return Math.floor(s/60)+' phút trước';if(s<86400)return Math.floor(s/3600)+' giờ trước';if(s<172800)return'hôm qua';return fmtDate(new Date(t).toISOString())}
 function bellLine(x){
   const c=getC(x.client),codes=[...new Set(x.files.map(f=>f.code))];
@@ -382,20 +427,21 @@ function bellPermRow(){
 function bellPanel(){
   const n=bellUnread().length;
   const perm=bellPermRow();
-  return `<div class="bp-h"><b>Thông báo</b><span>${n?n+' mục mới':'Tệp tải lên 30 ngày qua'}</span></div>${perm}`+
+  const lg=R.isAdmin&&BELL.logins.length?`<div class="bp-sec">Đăng nhập gần đây</div><div class="bp-list">${BELL.logins.slice(0,6).map(x=>{const t=Date.parse(x.at);return `<button type="button" class="bp-item${t>BELL.seen?' un':''}" data-go="admin"><span class="bp-dot login" aria-hidden="true"></span><span class="bp-t"><span><b>${esc(personName(x.email))}</b> ${x.kind==='login'?'đã đăng nhập':'mở lại portal'}</span><span class="bp-m">${esc(x.device||'')} · ${relTime(t)}</span></span></button>`}).join('')}</div><div class="bp-sec">Tệp mới</div>`:'';
+  return `<div class="bp-h"><b>Thông báo</b><span>${n+bellLoginUnread().length?(n+bellLoginUnread().length)+' mục mới':'Tệp tải lên 30 ngày qua'}</span></div>${perm}${lg}`+
     (BELL.items.length?`<div class="bp-list">${BELL.items.map(bellLine).join('')}</div>`:`<div class="bp-empty">Chưa có tệp nào được tải lên trong 30 ngày qua.</div>`);
 }
 function renderBell(){
   const b=$('bell');if(!b)return;
   const show=!!(R.email&&R.role&&!R.err);b.hidden=!show;if(!show){$('bell-panel').hidden=true;document.title='IDC Case Portal L-1A';return}
-  const n=bellUnread().reduce((a,x)=>a+x.files.length,0),bd=$('bell-n');
+  const n=bellUnread().reduce((a,x)=>a+x.files.length,0)+bellLoginUnread().length,bd=$('bell-n');
   bd.textContent=n>99?'99+':String(n);bd.hidden=!n;
   b.setAttribute('aria-label',n?`Thông báo: ${n} tệp mới`:'Thông báo');b.setAttribute('aria-expanded',String(BELL.open));
   document.title=(n?`(${n}) `:'')+'IDC Case Portal L-1A';
   const pn=$('bell-panel');pn.hidden=!BELL.open;if(BELL.open){pn.innerHTML=bellPanel();pn.style.top=matchMedia('(max-width:640px)').matches?Math.round(b.getBoundingClientRect().bottom+8)+'px':''}
 }
 function bellMarkSeen(){
-  const top=BELL.items.length?BELL.items[0].at:0;BELL.seen=Math.max(top,BELL.seen);const iso=new Date(BELL.seen).toISOString();
+  const top=Math.max(BELL.items.length?BELL.items[0].at:0,BELL.logins.length?Date.parse(BELL.logins[0].at)||0:0);BELL.seen=Math.max(top,BELL.seen);const iso=new Date(BELL.seen).toISOString();
   try{localStorage.setItem(bellKey(),iso)}catch(_){}
   if(R.sb&&R.sb.auth.updateUser)R.sb.auth.updateUser({data:{bell_seen:iso}}).catch(()=>{});
 }
@@ -429,6 +475,7 @@ async function signedUrl(f){
   R.urls[k]={url:r.data.signedUrl,exp:Date.now()+3600*1000};return r.data.signedUrl;
 }
 async function login(email,password){
+  JUST_LOGGED=true;
   const r=await R.sb.auth.signInWithPassword({email,password});
   if(r.error)return r.error.message==='Invalid login credentials'?'Email hoặc mật khẩu không đúng.':r.error.message;
   return null;
@@ -655,7 +702,7 @@ function crumbs(){
   const c=S.client&&getC(S.client);
   $('crumbs').innerHTML=`<span>Hồ sơ định cư</span><span class="sep">/</span>`+(S.view==='case'&&c?`<button class="row-link" data-go="clients" style="font-weight:500;color:var(--muted)">L-1A → EB-1C</button><span class="sep">/</span><b class="mono">${esc(c.id)}</b>`:`<b>L-1A → EB-1C</b>`);
 }
-function render(){navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='report'&&R.isAdmin){vReport();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
+function render(){presenceTrack();navs();crumbs();if(R.ready&&!R.email&&R.sb){vLogin();return}if(R.err&&R.ready){$('view').innerHTML=vEmpty();return}if(S.view==='admin'&&R.isAdmin){vAdmin();return}if(S.view==='report'&&R.isAdmin){vReport();return}if(S.view==='case'&&getC(S.client))vCase();else{if(S.view==='case'&&R.ready&&R.clients.length&&!getC(S.client)){S.view='clients'}vClients()}}
 
 function vEmpty(){
   if(!R.ready)return `<div class="card empty"><b>Đang tải dữ liệu…</b></div>`;
@@ -674,13 +721,14 @@ function vLogin(){
       <button class="btn primary" type="submit" id="l-btn">Đăng nhập</button>
     </form></div></section>`;
 }
-function vAdmin(){
+function vAdmin(){setTimeout(renderOnline,0);
   const groupSel=v=>`<select data-k="group">${Object.keys(GROUPS).map(g=>`<option value="${g}" ${g===v?'selected':''}>${GROUPS[g].short}</option>`).join('')}</select>`;
   const inp=(k,v,w)=>`<input data-k="${k}" value="${esc(v)}" style="width:${w||'100%'}">`;
   $('view').innerHTML=`
   <div class="phead"><div><div class="eyebrow">Quản trị</div><h1>Cấu hình portal</h1><p>Quản lý nhân viên được đăng nhập, danh mục tài liệu, các bước lộ trình và mức phí của chương trình L-1A → EB-1C.</p></div></div>
+  ${loginCard()}
   <section class="card"><div class="card-h"><h3>Nhân viên</h3><span class="sp dnote">Tạo mật khẩu cho nhân viên trong Supabase → Authentication → Add user, rồi thêm email tại đây.</span></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Tên</th><th>Quyền</th>${R.notify?'<th>Nhận thông báo</th><th>Zalo chat ID</th>':''}<th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td><input data-staffname="${esc(u.email)}" value="${esc(u.name||'')}" placeholder="Nhập tên" style="width:170px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Tên của ${esc(u.email)}"></td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['lawyer','Luật sư'],['staff','Nhân viên']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td>${R.notify?`<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-staffnotify="${esc(u.email)}" ${u.notify!==false?'checked':''}>Nhận</label></td><td><input data-staffzalo="${esc(u.email)}" value="${esc(u.zalo_chat_id||'')}" placeholder="—" style="width:150px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Zalo chat ID của ${esc(u.email)}"></td>`:''}<td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Email</th><th>Hoạt động</th><th>Tên</th><th>Quyền</th>${R.notify?'<th>Nhận thông báo</th><th>Zalo chat ID</th>':''}<th></th></tr></thead><tbody id="staffrows">${R.staff.map(u=>`<tr><td>${esc(u.email)}</td><td data-olmail="${esc(String(u.email).toLowerCase())}"></td><td><input data-staffname="${esc(u.email)}" value="${esc(u.name||'')}" placeholder="Nhập tên" style="width:170px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Tên của ${esc(u.email)}"></td><td><select data-staffrole="${esc(u.email)}">${[['admin','Quản trị'],['lawyer','Luật sư'],['staff','Nhân viên']].map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('')}</select></td>${R.notify?`<td><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-staffnotify="${esc(u.email)}" ${u.notify!==false?'checked':''}>Nhận</label></td><td><input data-staffzalo="${esc(u.email)}" value="${esc(u.zalo_chat_id||'')}" placeholder="—" style="width:150px;border:1px solid var(--border-strong);border-radius:7px;padding:4px 8px;background:var(--bg)" aria-label="Zalo chat ID của ${esc(u.email)}"></td>`:''}<td class="r">${u.email===R.email?'<span class="dnote">Bạn</span>':`<button class="btn sm ghost danger" data-staffdel="${esc(u.email)}">Gỡ</button>`}</td></tr>`).join('')}</tbody></table></div>
     <form id="staffform" class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border)"><input id="s-email" type="email" placeholder="email@congty.com" required style="flex:1 1 220px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><input id="s-name" placeholder="Tên hiển thị" style="flex:1 1 160px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><select id="s-role" style="border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--bg)"><option value="staff">Nhân viên</option><option value="lawyer">Luật sư</option><option value="admin">Quản trị</option></select><button class="btn primary" type="submit">${I('plus')}Thêm nhân viên</button></form>
   </section>
   ${notifyCard()}
@@ -691,6 +739,15 @@ function vAdmin(){
     <section class="card"><div class="card-h"><h3>Các đợt thanh toán (USD)</h3></div><div class="tbl-wrap"><table><tbody id="payrows">${PAY.map(p=>`<tr data-k="${p.k}"><td><input data-k="n" value="${esc(p.n)}" style="width:70px"></td><td><input data-k="w" value="${esc(p.w)}" style="width:100%"></td><td><input data-k="a" value="${p.a}" style="width:90px;text-align:right" inputmode="numeric"></td></tr>`).join('')}</tbody></table></div></section>
   </div>
   <div style="display:flex;gap:8px"><button class="btn primary" data-act="saveProgram">${I('check')}Lưu cấu hình</button><button class="btn" data-act="exportExcel">${I('sheet')}Xuất toàn bộ dữ liệu (Excel)</button></div>`;
+}
+function loginCard(){
+  const L=R.logins;const f=S.lgf||'';const rows=(L||[]).filter(x=>!f||String(x.email).toLowerCase()===f).slice(0,60);
+  const ppl=[...new Set((L||[]).map(x=>String(x.email).toLowerCase()))];
+  const body=L===null?`<div class="banner warn">${I('alert')}<div>Chưa cài nhật ký đăng nhập trên Supabase. Chạy tệp <b>supabase/logins.sql</b> rồi tải lại trang.${R.loginsErr?` <span class="dnote">(${esc(R.loginsErr)})</span>`:''}</div></div>`:
+    `<div class="lg-head"><label for="lg-f" class="dnote">Lọc theo người</label><select id="lg-f"><option value="">Tất cả</option>${ppl.map(e=>`<option value="${esc(e)}" ${f===e?'selected':''}>${esc(personName(e))}</option>`).join('')}</select><span class="dnote">${rows.length} lần gần nhất · lưu 180 ngày</span></div>
+     <div class="tbl-wrap"><table><thead><tr><th>Thời gian</th><th>Người</th><th>Quyền</th><th>Hình thức</th><th>Thiết bị</th></tr></thead><tbody>${rows.length?rows.map(x=>{const e=String(x.email).toLowerCase();const u=(R.people||[]).find(p=>p.email===e);return `<tr><td class="num">${fmtTime(x.at)}<div class="dnote">${relTime(Date.parse(x.at))}</div></td><td><b>${esc(personName(e))}</b><div class="dnote">${esc(e)}</div></td><td>${esc(ROLE_VI[u&&u.role]||'—')}</td><td><span class="pill ${x.kind==='login'?'s-approved':'s-na'}">${x.kind==='login'?'Đăng nhập':'Mở lại portal'}</span></td><td class="dnote">${esc(x.device||'—')}</td></tr>`}).join(''):`<tr><td colspan="5" class="dnote">Chưa có lượt đăng nhập nào được ghi lại.</td></tr>`}</tbody></table></div>`;
+  return `<section class="card"><div class="card-h"><h3>Ai đang online · Nhật ký đăng nhập</h3><span class="sp dnote">Có người đăng nhập, chuông 🔔 của Quản trị sẽ báo ngay. Email chỉ gửi khi lần đầu đăng nhập, thiết bị lạ hoặc ngoài giờ (22:00–6:00).</span></div>
+    <div class="card-b lg-grid"><div><h4 class="lg-t">Đang online <span class="ol-count" id="ol-n">${onlineList().length}</span></h4><div id="ol-box">${onlineHTML()}</div></div><div><h4 class="lg-t">Lượt đăng nhập</h4>${body}</div></div></section>`;
 }
 function notifyCard(){
   const n=R.notify;
@@ -912,7 +969,7 @@ let upTarget=null,armed=null;
 document.addEventListener('click',async e=>{
   const t=e.target.closest('button,[data-open],[data-drop],tr[data-doc]');if(!t)return;
   const ds=t.dataset;const c=getC(S.client);
-  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin')loadStaff();if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
+  if(ds.go){S.view=ds.go;S.client=null;closeDrawer();setHash();if(ds.go==='admin'){loadStaff();loadLogins();if(BELL.open)toggleBell(false)}if(ds.go==='report')loadReportFiles();render();window.scrollTo(0,0);return}
   if(ds.staffdel){const r=await R.sb.from('staff').delete().eq('email',ds.staffdel);if(r.error)toast(dbErr(r.error));else{toast('Đã gỡ '+ds.staffdel);loadStaff()}return}
   if(ds.docdel!==undefined){t.closest('tr').remove();return}
   if(ds.asgall){const bx=[...document.querySelectorAll(`[data-asg][data-role="${ds.asgall}"]`)];const all=bx.every(x=>x.checked);bx.forEach(x=>x.checked=!all);$('asg-n')&&document.getElementById('dr-body').onchange();return}
@@ -973,3 +1030,5 @@ function setHash(){try{history.replaceState(null,'','#'+(S.view==='case'?S.clien
 (function boot(){const h=(location.hash||'').slice(1);if(h==='admin'||h==='report')S.view=h;else if(/^[A-Za-z0-9-]+$/.test(h)&&h!=='clients'){S.view='case';S.client=h}render();initRuntime()})();
 
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='ms-premium'){const b=document.querySelector('.ms-pp');if(b)b.hidden=!e.target.value}});
+
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='lg-f'){S.lgf=e.target.value;render()}});

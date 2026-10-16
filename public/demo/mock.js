@@ -87,6 +87,10 @@
             { email: 'quanghuy@idcvietnam.vn', name: 'Quang Huy', role: 'staff', created_at: iso(30) },
             { email: 'minhtam@idcvietnam.vn', name: 'Minh Tâm', role: 'staff', created_at: iso(30) },
             { email: 'luatsu@idcvietnam.vn', name: 'LS. Ryan Yee', role: 'lawyer', created_at: iso(30) }],
+    login_log: [
+      { id: 3, email: 'luatsu@idcvietnam.vn', at: new Date(Date.now() - 35 * 60e3).toISOString(), kind: 'login', device: 'Máy tính · Chrome · macOS' },
+      { id: 2, email: 'quanghuy@idcvietnam.vn', at: new Date(Date.now() - 3 * 3600e3).toISOString(), kind: 'open', device: 'Điện thoại · Safari · iOS' },
+      { id: 1, email: 'lananh@idcvietnam.vn', at: new Date(Date.now() - 26 * 3600e3).toISOString(), kind: 'login', device: 'Máy tính · Cốc Cốc · Windows' }],
     clients, files, settings: [{ key: 'notify', value: { enabled: true, from: 'IDC VIETNAM <thongbao@ditruidc.com>', portal: 'https://hoso.ditruidc.com', instant: [], digest: ['bangiamdoc@idcvietnam.vn'], email: true, zalo: true, zalo_groups: [] } }]
   };
 
@@ -149,6 +153,10 @@
     from: t => Q(t),
     rpc: async (fn, a) => {
       if (fn === 'notify_remind') return { data: 'Bản xem thử: không gửi email thật cho ' + a.p_email, error: null };
+      if (fn === 'log_login') {
+        if (!window.__demoLoginSim) { window.__demoLoginSim = 1; setTimeout(() => { const row = { id: 99, email: 'lananh@idcvietnam.vn', at: new Date().toISOString(), kind: 'login', device: 'Máy tính · Chrome · Windows' }; DB.login_log.unshift(row); listeners.filter(l => l.table === 'login_log').forEach(l => l.cb({ eventType: 'INSERT', new: clone(row) })); }, 6000); }
+        return { data: null, error: null };
+      }
       if (fn === 'notify_test') return { data: ME + ' (bản xem thử không gửi thư thật)', error: null };
       if (fn !== 'patch_client') return { error: { message: 'Không hỗ trợ' } };
       const c = DB.clients.find(r => r.id === a.p_id); if (!c) return { error: { message: 'Không tìm thấy hồ sơ' } };
@@ -170,7 +178,14 @@
       download: async path => blobs[path] ? { data: blobs[path](), error: null } : { data: null, error: { message: 'Không có tệp' } },
       createSignedUrl: async path => blobs[path] ? { data: { signedUrl: URL.createObjectURL(blobs[path]()) }, error: null } : { data: null, error: { message: 'Không có tệp' } }
     }) },
-    channel: () => { const ch = { on(_e, f, cb) { listeners.push({ table: f.table, cb }); return ch; }, subscribe() { return ch; } }; return ch; },
+    channel: name => { let pres = null; const ch = {
+      on(e, f, cb) { if (e === 'presence') pres = cb; else listeners.push({ table: f.table, cb }); return ch; },
+      subscribe(cb) { if (cb) setTimeout(() => cb('SUBSCRIBED'), 20); if (pres) setTimeout(pres, 60); return ch; },
+      track: async m => { ch._me = m; if (pres) setTimeout(pres, 20); return 'ok'; },
+      presenceState: () => Object.assign({ 'luatsu@idcvietnam.vn': [{ email: 'luatsu@idcvietnam.vn', name: 'LS. Ryan Yee', role: 'lawyer', view: 'L1A-0101', device: 'Máy tính · Chrome · macOS', since: new Date(Date.now() - 35 * 60e3).toISOString() }],
+        'quanghuy@idcvietnam.vn': [{ email: 'quanghuy@idcvietnam.vn', name: 'Quang Huy', role: 'staff', view: 'clients', away: true, device: 'Điện thoại · Safari · iOS', since: new Date(Date.now() - 12 * 60e3).toISOString() }] },
+        ch._me ? { [ch._me.email]: [ch._me] } : {})
+    }; return ch; },
     removeChannel: () => {}
   };
   window.supabase = { createClient: () => client };
