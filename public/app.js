@@ -50,6 +50,7 @@ const DEFAULT_DOCS=[
  ['US-13','US','Giấy tờ khác theo yêu cầu luật sư','Other Documents (Attorney)','Khác','','Theo yêu cầu']
 ].map(([code,group,name,en,cat,note,period,op])=>({code,group,name,en,cat,note,period,op:!!op}));
 let DOCS=DEFAULT_DOCS.slice(),DOC=Object.fromEntries(DOCS.map(d=>[d.code,d]));
+const STEP_DESC=['Thu thập, kiểm tra hồ sơ công ty Việt Nam & Mỹ','Nộp đơn USCIS, chờ duyệt và phỏng vấn lãnh sự','Sang Mỹ điều hành công ty, vận hành tối thiểu 1 năm','Nộp đơn EB-1C và điều chỉnh tình trạng cư trú','Nhận thẻ xanh 10 năm cho cả gia đình'];
 let STEPS=[{t:'Thẩm định & chứng từ',d:'2–4 tuần'},{t:'Nộp I-129 · Phỏng vấn',d:'5–9 tháng'},{t:'Nhận visa L-1A',d:'≥ 12 tháng'},{t:'I-140 · I-485',d:'12–24 tháng'},{t:'Thẻ xanh EB-1C',d:'Thẻ 10 năm'}];
 let PAY=[{k:'d1',n:'Đợt 1',w:'Khi ký hợp đồng & mở hồ sơ',a:19000},{k:'d2',n:'Đợt 2',w:'Khi nộp I-129',a:20000},{k:'d3',n:'Đợt 3',w:'Khi nhận visa L-1A',a:15255},{k:'d4',n:'Đợt 4',w:'Khi nộp I-140 / I-485',a:18245},{k:'d5',n:'Đợt 5',w:'Sau khi nhận thẻ xanh',a:5000}];
 const ST={missing:['Còn thiếu','s-missing'],review:['Chờ duyệt','s-review'],approved:['Đã duyệt','s-approved'],na:['Không áp dụng','s-na']};
@@ -733,7 +734,7 @@ function vCase(){
       </div>
       <div class="ring">${ringSVG(s)}<div><div class="big num">${s.approved}<span class="muted" style="font-size:14px;font-weight:500"> / ${s.req}</span></div><div class="dnote">tài liệu bắt buộc đã duyệt</div><div class="small" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><span class="pill s-received">${s.rcv} đã nhận</span><span class="pill s-missing">${s.missing} thiếu</span><span class="pill s-review">${s.review} chờ duyệt</span></div></div></div>
     </div>
-    <div class="steps">${STEPS.map((x,i)=>`<div class="stp ${i+1<step?'done':i+1===step?'cur':''}">${R.canWrite?`<button data-step="${i+1}" title="Chuyển hồ sơ sang bước ${i+1}">`:'<div style="display:flex;gap:10px">'}<span class="n">${i+1<step?I('check',12):i+1}</span><span><b>${x.t}</b><span>${x.d}</span></span>${R.canWrite?'</button>':'</div>'}</div>`).join('')}</div>
+    <div class="steps2" role="list" aria-label="Lộ trình hồ sơ">${STEPS.map((x,i)=>{const st=i+1<step?'done':i+1===step?'cur':'next';const lab=st==='done'?'Hoàn thành':st==='cur'?'Đang thực hiện':'Sắp tới';const inner=`<span class="sx-top"><span class="sx-n">${st==='done'?I('check',14):i+1}</span><span class="sx-eb">Bước ${i+1}</span><span class="sx-st">${lab}</span></span><b class="sx-t">${esc(x.t)}</b><span class="sx-d">${esc(x.s||STEP_DESC[i]||'')}</span><span class="sx-time">${I('clock',12)}${esc(x.d)}</span>`;return `<div class="sx sx-${i+1} ${st}" role="listitem" ${st==='cur'?'aria-current="step"':''}>${R.canWrite?`<button data-step="${i+1}" title="Chuyển hồ sơ sang bước ${i+1}">${inner}</button>`:`<div class="sx-in">${inner}</div>`}</div>`}).join('')}</div>
   </section>
   <section class="card">
     <div class="tabs" role="tablist">${tabs.map(([k,l,n,cl])=>`<button class="tab${cl?' t-'+cl:''}" role="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${n!==''?`<span class="c ${n&&cl?cl:''}">${n}</span>`:''}</button>`).join('')}</div>
