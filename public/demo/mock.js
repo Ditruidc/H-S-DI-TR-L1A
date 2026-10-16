@@ -155,6 +155,7 @@
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       signInWithPassword: async () => ({ data: { session }, error: null }),
       updateUser: async () => ({ data: {}, error: null }),
+      resetPasswordForEmail: async () => ({ data: {}, error: null }),
       signOut: async () => { setTimeout(() => window.toast && toast('Đây là bản xem thử, không cần đăng xuất.'), 50); return { error: null }; }
     },
     from: t => Q(t),

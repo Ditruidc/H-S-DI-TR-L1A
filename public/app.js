@@ -162,12 +162,15 @@ function applyProgram(p){
 const programNow=()=>({docs:DOCS,steps:STEPS,pay:PAY});
 
 /* ---------- auth + boot ---------- */
+const PW_RECOVERY=/type=recovery/.test(location.hash||'')||/type=recovery/.test(location.search||'');
 async function initRuntime(){
   if(!window.supabase||!CFG.SUPABASE_URL||!CFG.SUPABASE_ANON_KEY){R.ready=true;R.err={message:'Chưa cấu hình Supabase (public/config.js).'};render();return}
   R.sb=window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
   const {data}=await R.sb.auth.getSession();
-  R.sb.auth.onAuthStateChange((_ev,session)=>{const was=!!R.session;R.session=session;if(!!session!==was)afterAuth()});
+  R.sb.auth.onAuthStateChange((ev,session)=>{const was=!!R.session;R.session=session;if(ev==='PASSWORD_RECOVERY')setTimeout(()=>{if(!document.getElementById('pwscrim'))showPw('recovery')},300);if(!!session!==was)afterAuth()});
   R.session=data.session;afterAuth();
+  if(PW_RECOVERY&&data.session)setTimeout(()=>{if(!document.getElementById('pwscrim'))showPw('recovery')},500);
+  else if(/error_code=otp_expired|error=access_denied/.test(location.hash||'')){setTimeout(()=>{S.forgot=true;render();toast('Link đặt lại mật khẩu đã hết hạn hoặc đã dùng. Hãy gửi lại email mới.')},400);try{history.replaceState(null,'',location.pathname)}catch(_){}}
 }
 let channel=null;
 async function afterAuth(){
@@ -751,7 +754,7 @@ function navs(){
   $('nav-main').innerHTML=logged?`<button data-go="clients" aria-current="${S.view!=='admin'&&S.view!=='report'&&S.view!=='trash'}">${I('users')}Hồ sơ khách hàng<span class="ct">${n}</span></button>`+(R.isAdmin?`<button data-go="report" aria-current="${S.view==='report'}">${I('chart')}Báo cáo</button><button data-go="admin" aria-current="${S.view==='admin'}">${I('edit')}Quản trị</button>`:'')+(R.canWrite?`<button data-go="trash" aria-current="${S.view==='trash'}">${I('trash')}Thùng rác${TR.n?`<span class="ct">${TR.n}</span>`:''}</button>`:''):'';
   $('nav-prog').innerHTML=`<button data-go="clients" aria-current="false">${I('folder')}L-1A → EB-1C<span class="ct">${logged?n:''}</span></button>`+['EB-5','E-2','Du học Mỹ'].map(p=>`<button disabled>${I('folder')}${p}<span class="soon">Sắp có</span></button>`).join('');
   $('nav-mobile').innerHTML=`<div class="logo">IDC</div>`+(logged?`<button class="chip" data-go="clients" aria-pressed="${S.view!=='admin'&&S.view!=='report'}">Hồ sơ</button>${R.isAdmin?`<button class="chip" data-go="report" aria-pressed="${S.view==='report'}">Báo cáo</button><button class="chip" data-go="admin" aria-pressed="${S.view==='admin'}">Quản trị</button>`:''}<button class="chip" data-act="logout">Đăng xuất</button>`:'');
-  $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.role==='lawyer'?'Luật sư · xem & duyệt tài liệu':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><button class="btn sm" data-act="logout" style="margin-top:6px">Đăng xuất</button>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
+  $('side-foot').innerHTML=R.email?`<div class="dotline"><span class="dot ${R.err?'bad':'ok'}"></span><b>${esc(R.email)}</b></div><span>${R.isAdmin?'Quản trị viên':R.role==='lawyer'?'Luật sư · xem & duyệt tài liệu':R.canWrite?'Nhân viên · được chỉnh sửa':'Chỉ xem'}</span><div style="display:flex;gap:6px;margin-top:6px"><button class="btn sm" data-pwchange style="flex:1">Đổi mật khẩu</button><button class="btn sm" data-act="logout" style="flex:1">Đăng xuất</button></div>`:`<div class="dotline"><span class="dot warn"></span><b>Chưa đăng nhập</b></div><span>Chỉ nhân viên IDC VIETNAM được cấp tài khoản mới truy cập được.</span>`;
 }
 function crumbs(){
   const c=S.client&&getC(S.client);
@@ -774,8 +777,42 @@ function vLogin(){
       <div class="fld"><label for="l-pass">Mật khẩu</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
       <div id="l-err" class="dnote" style="color:var(--bad)"></div>
       <button class="btn primary" type="submit" id="l-btn">Đăng nhập</button>
-    </form></div></section>`;
+      <button class="row-link" type="button" data-pwforgot style="justify-self:center;font-size:13px">Quên mật khẩu?</button>
+    </form>
+    ${S.forgot?`<form id="forgotform" class="form pw-box" style="grid-template-columns:1fr;margin-top:16px">
+      <b style="font-size:14px">Lấy lại mật khẩu</b><span class="dnote">Nhập email đăng nhập. Portal gửi email có đường link để bạn đặt mật khẩu mới (link dùng 1 lần, hết hạn sau 1 giờ).</span>
+      <div class="fld"><label for="f-email">Email</label><input id="f-email" type="email" autocomplete="username" required value="${esc(($('l-email')||{}).value||'')}"></div>
+      <div id="f-msg" class="dnote"></div>
+      <button class="btn" type="submit" id="f-btn">Gửi email đặt lại mật khẩu</button></form>`:''}
+    </div></section>`;
 }
+function pwFormHTML(title,sub){return `<div class="pw-scrim" id="pwscrim"><form id="pwform" class="card pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-t"><div class="card-b" style="padding:24px;display:grid;gap:12px">
+  <div><h2 id="pw-t" style="margin:0 0 4px;font-size:18px">${title}</h2><p class="dnote" style="margin:0">${sub}</p></div>
+  <div class="fld"><label for="pw-1">Mật khẩu mới</label><input id="pw-1" type="password" autocomplete="new-password" minlength="8" required></div>
+  <div class="fld"><label for="pw-2">Nhập lại mật khẩu mới</label><input id="pw-2" type="password" autocomplete="new-password" minlength="8" required></div>
+  <span class="dnote">Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường và số.</span>
+  <div id="pw-err" class="dnote" style="color:var(--bad)"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">${S.pwMode==='recovery'?'':'<button type="button" class="btn" data-pwcancel>Huỷ</button>'}<button class="btn primary" type="submit" id="pw-btn">Lưu mật khẩu mới</button></div></div></form></div>`}
+function showPw(mode){S.pwMode=mode;let el=document.getElementById('pwscrim');if(el)el.remove();
+  document.body.insertAdjacentHTML('beforeend',mode==='recovery'?pwFormHTML('Đặt mật khẩu mới','Bạn vừa mở link lấy lại mật khẩu. Đặt mật khẩu mới để tiếp tục dùng portal.'):pwFormHTML('Đổi mật khẩu',`Tài khoản: ${esc(R.email||'')}`));
+  setTimeout(()=>{const i=document.getElementById('pw-1');i&&i.focus()},30)}
+function hidePw(){const el=document.getElementById('pwscrim');if(el)el.remove();S.pwMode=null}
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-pwforgot]')){S.forgot=!S.forgot;render();setTimeout(()=>{const f=document.getElementById('f-email');f&&f.focus()},0);return}
+  if(e.target.closest('[data-pwchange]')){showPw('change');return}
+  if(e.target.closest('[data-pwcancel]')||(e.target.id==='pwscrim'&&S.pwMode!=='recovery')){hidePw();return}
+});
+document.addEventListener('submit',async e=>{
+  if(e.target.id==='forgotform'){e.preventDefault();const em=$('f-email').value.trim().toLowerCase(),btn=$('f-btn'),msg=$('f-msg');btn.disabled=true;msg.style.color='';msg.textContent='Đang gửi…';
+    const r=await R.sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+'/'});btn.disabled=false;
+    if(r.error&&/rate|limit|seconds/i.test(r.error.message)){msg.style.color='var(--bad)';msg.textContent='Bạn vừa yêu cầu gần đây. Đợi vài phút rồi thử lại.';return}
+    msg.style.color='var(--ok)';msg.innerHTML=`Nếu <b>${esc(em)}</b> là tài khoản portal, email đặt lại mật khẩu sẽ đến trong vài phút. Kiểm tra cả hộp thư <b>Spam / Quảng cáo</b>.`;return}
+  if(e.target.id==='pwform'){e.preventDefault();const a=$('pw-1').value,b=$('pw-2').value,er=$('pw-err');er.textContent='';
+    if(a.length<8){er.textContent='Mật khẩu cần ít nhất 8 ký tự.';return}if(a!==b){er.textContent='Hai lần nhập không giống nhau.';return}
+    $('pw-btn').disabled=true;const r=await R.sb.auth.updateUser({password:a});$('pw-btn').disabled=false;
+    if(r.error){er.textContent=/same|different/i.test(r.error.message)?'Mật khẩu mới phải khác mật khẩu cũ.':/weak|short|characters/i.test(r.error.message)?'Mật khẩu chưa đủ mạnh, hãy dùng dài hơn và có chữ + số.':'Không đổi được: '+r.error.message;return}
+    hidePw();try{history.replaceState(null,'',location.pathname+'#clients')}catch(_){}toast('Đã đổi mật khẩu. Lần sau đăng nhập bằng mật khẩu mới.');return}
+});
 function vAdmin(){setTimeout(renderOnline,0);
   const groupSel=v=>`<select data-k="group">${Object.keys(GROUPS).map(g=>`<option value="${g}" ${g===v?'selected':''}>${GROUPS[g].short}</option>`).join('')}</select>`;
   const inp=(k,v,w)=>`<input data-k="${k}" value="${esc(v)}" style="width:${w||'100%'}">`;
