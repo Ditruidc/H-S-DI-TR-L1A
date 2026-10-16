@@ -184,8 +184,9 @@
         if (fn === 'chat_leave_group') { const r = room(a.p_room); if (r) r.members = r.members.filter(e => e !== ME); return { data: null, error: null }; }
         if (fn === 'chat_send') {
           const r = room(a.p_room); if (!r) return { error: { message: 'Không tìm thấy cuộc trò chuyện' } };
-          const m = { id: M.length ? Math.max(...M.map(x => x.id)) + 1 : 1, room_id: r.id, author: ME, body: String(a.p_body).trim(), mentions: a.p_mentions || [], created_at: t };
-          M.push(m); r.last_at = t; r.last_text = m.body.slice(0, 160); r.last_by = ME;
+          const files = a.p_files || []; const m = { id: M.length ? Math.max(...M.map(x => x.id)) + 1 : 1, room_id: r.id, author: ME, body: String(a.p_body || '').trim(), mentions: a.p_mentions || [], attachments: files, created_at: t };
+          if (!m.body && !files.length) return { error: { message: 'Tin nhắn trống' } };
+          M.push(m); r.last_at = t; r.last_text = m.body ? m.body.slice(0, 160) : (files[0] && String(files[0].mime).startsWith('image/') ? '🖼 Ảnh' : '📎 ' + (files[0] || {}).name); r.last_by = ME;
           listeners.filter(l => l.table === 'chat_messages').forEach(l => l.cb({ eventType: 'INSERT', new: clone(m) }));
           if (!window.__demoChatReply) { window.__demoChatReply = 1; setTimeout(() => { const other = r.kind === 'dm' ? r.members.find(e => e !== ME) : 'lananh@idcvietnam.vn'; const rep = { id: Math.max(...M.map(x => x.id)) + 1, room_id: r.id, author: other, body: 'Đã nhận, em xử lý ngay ạ 👍', mentions: [], created_at: new Date().toISOString() }; M.push(rep); r.last_at = rep.created_at; r.last_text = rep.body; r.last_by = other; listeners.filter(l => l.table === 'chat_messages').forEach(l => l.cb({ eventType: 'INSERT', new: clone(rep) })); }, 2500); }
           return { data: m.id, error: null };

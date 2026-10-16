@@ -1,6 +1,6 @@
 
 /* ---------- helpers ---------- */
-const P={chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+const P={clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
 folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 down:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
@@ -1125,7 +1125,7 @@ document.addEventListener('change',e=>{const t=e.target;if(!t)return;
 document.addEventListener('click',e=>{if(S.colOpen&&!e.target.closest('.pg-cust')){S.colOpen=false;render()}});
 
 /* ---------- Trao đổi (chat) ---------- */
-const CH={open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
+const CH={pending:[],emoji:false,urls:{},sending:false,open:false,tab:'case',room:null,rooms:[],msgs:{},unread:{},ready:false,err:'',newGroup:false,edit:false,ment:new Map(),sugg:null};
 const chatTot=()=>Object.values(CH.unread).reduce((a,b)=>a+b,0);
 function chatRoomOf(kind,key){return CH.rooms.find(r=>r.kind===kind&&(kind==='case'?r.client_id===key:false))}
 function chatTitle(r){if(!r)return'';if(r.kind==='case'){const c=getC(r.client_id);return `${r.client_id}${c&&c.name?' · '+c.name:''}`}if(r.kind==='group')return r.name||'Nhóm';const o=(r.members||[]).find(e=>e!==R.email);return personName(o)}
@@ -1142,7 +1142,7 @@ function chatReset(){CH.ready=false;CH.open=false;CH.room=null;CH.rooms=[];CH.ms
 async function chatLoadRooms(){const r=await R.sb.from('chat_rooms').select('*').order('last_at',{ascending:false});if(r.error){CH.err=r.error.message;return}CH.err='';CH.rooms=(r.data||[]).map(x=>Object.assign(x,{members:(x.members||[]).map(e=>String(e).toLowerCase())}))}
 async function chatLoadUnread(){const r=await R.sb.rpc('chat_unread');if(r.error)return;CH.unread={};(r.data||[]).forEach(x=>{CH.unread[x.room_id]=+x.n});chatBadge()}
 async function chatLoadMsgs(id){const r=await R.sb.from('chat_messages').select('*').eq('room_id',id).order('id',{ascending:false}).limit(150);if(r.error){toast(dbErr(r.error));return}CH.msgs[id]=(r.data||[]).slice().reverse()}
-async function chatOpenRoom(id){CH.room=id;CH.open=true;CH.newGroup=false;CH.edit=false;CH.ment=new Map();chatRender();if(!CH.msgs[id])await chatLoadMsgs(id);delete CH.unread[id];chatBadge();chatRender(true);R.sb.rpc('chat_mark_read',{p_room:id})}
+async function chatOpenRoom(id){if(CH.room!==id){CH.pending.forEach(f=>URL.revokeObjectURL(f.url));CH.pending=[];CH.emoji=false}CH.room=id;CH.open=true;CH.newGroup=false;CH.edit=false;CH.ment=new Map();chatRender();if(!CH.msgs[id])await chatLoadMsgs(id);delete CH.unread[id];chatBadge();chatRender(true);R.sb.rpc('chat_mark_read',{p_room:id})}
 async function chatOpenCase(cid){const ex=chatRoomOf('case',cid);if(ex)return chatOpenRoom(ex.id);const r=await R.sb.rpc('chat_case_room',{p_client:cid});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
 async function chatOpenDm(email){const r=await R.sb.rpc('chat_dm_room',{p_email:email});if(r.error){toast(dbErr(r.error));return}await chatLoadRooms();chatOpenRoom(r.data)}
 function chatLive(m){
@@ -1203,11 +1203,15 @@ function chatThreadHTML(){
   let last='',html='';
   (ms||[]).forEach(m=>{const d=new Date(m.created_at).toDateString();if(d!==last){last=d;html+=`<div class="cm-day"><span>${fmtDate(m.created_at)}</span></div>`}
     const mine=String(m.author).toLowerCase()===R.email;
-    html+=`<div class="cm${mine?' me':''}">${mine?'':`<span class="ch-av sm">${esc(initials(personName(m.author)))}</span>`}<div class="cm-b">${mine?'':`<b>${esc(personName(m.author))}</b>`}<div class="cm-t">${chatBodyHTML(m,r)}</div><time>${chatTime(m.created_at)}</time></div></div>`});
+    html+=`<div class="cm${mine?' me':''}">${mine?'':`<span class="ch-av sm">${esc(initials(personName(m.author)))}</span>`}<div class="cm-b">${mine?'':`<b>${esc(personName(m.author))}</b>`}${m.body?`<div class="cm-t">${chatBodyHTML(m,r)}</div>`:''}${chatAttHTML(m)}<time>${chatTime(m.created_at)}</time></div></div>`});
   return `<div class="ch-h"><button class="icon-btn" data-chback aria-label="Quay lại">${I('chl',18)}</button><div class="ch-ht"><b>${esc(chatTitle(r))}</b><span title="${esc(ppl.map(personName).join(', '))}">${esc(sub)}</span></div>${r.kind==='case'?`<button class="icon-btn" data-open="${esc(r.client_id)}" title="Mở hồ sơ">${I('folder',16)}</button>`:''}${canEdit?`<button class="icon-btn" data-chedit title="Sửa nhóm">${I('edit',16)}</button>`:''}${r.kind==='group'&&!canEdit&&r.members.includes(R.email)?`<button class="icon-btn" data-chleave title="Rời nhóm">${I('undo',16)}</button>`:''}<button class="icon-btn" data-chclose aria-label="Đóng">${I('x')}</button></div>
     ${CH.edit?chatGroupForm(r):''}
     <div class="ch-msgs" id="ch-msgs">${ms?(html||`<div class="ch-empty">Chưa có tin nhắn. Gõ <b>@</b> để nhắc tên người cần đọc.</div>`):'<div class="ch-empty">Đang tải…</div>'}</div>
-    <form class="ch-in" id="chform"><div class="ch-sugg" id="ch-sugg" hidden></div><textarea id="ch-text" rows="1" placeholder="Nhập tin nhắn… (gõ @ để nhắc tên, Enter để gửi)" maxlength="4000"></textarea><button class="btn primary" type="submit" aria-label="Gửi">${I('send',16)}</button></form>`;
+    ${CH.pending.length?`<div class="ch-pend">${CH.pending.map((f,i)=>`<div class="ch-pf">${f.mime.startsWith('image/')?`<img src="${f.url}" alt="">`:`<span class="ch-pf-ic">${I('file',16)}</span>`}<span class="ch-pf-n" title="${esc(f.name)}">${esc(f.name)}<small>${chatSize(f.size)}</small></span><button type="button" class="ch-pf-x" data-chunpend="${i}" aria-label="Bỏ tệp">${I('x',12)}</button></div>`).join('')}</div>`:''}
+    <form class="ch-in" id="chform"><div class="ch-sugg" id="ch-sugg" hidden></div>${CH.emoji?`<div class="ch-emo" role="dialog" aria-label="Biểu tượng cảm xúc">${EMOJI.map(e=>`<button type="button" data-chemo="${e}">${e}</button>`).join('')}</div>`:''}
+      <div class="ch-tools"><button type="button" class="ch-tool" data-chattach title="Gửi ảnh / tệp (tối đa 25 MB)" aria-label="Gửi ảnh hoặc tệp">${I('clip',18)}</button><button type="button" class="ch-tool${CH.emoji?' on':''}" data-chemoji title="Biểu tượng cảm xúc" aria-label="Biểu tượng cảm xúc">${I('smile',18)}</button></div>
+      <textarea id="ch-text" rows="1" placeholder="Nhập tin nhắn… (@ để nhắc tên · dán ảnh Ctrl+V)" maxlength="4000"></textarea><button class="btn primary" type="submit" aria-label="Gửi" ${CH.sending?'disabled':''}>${CH.sending?'…':I('send',16)}</button></form>
+    <input type="file" id="ch-file" multiple hidden>`;
 }
 function chatRender(scroll){
   chatBadge();const p=document.getElementById('chatpanel');if(!p)return;p.hidden=!CH.open;if(!CH.open)return;
@@ -1215,14 +1219,22 @@ function chatRender(scroll){
   p.innerHTML=CH.room?chatThreadHTML():chatListHTML();
   const t2=document.getElementById('ch-text');if(t2){t2.value=draft;if(hadFocus||scroll)t2.focus();chatGrow(t2)}
   const b2=document.getElementById('ch-msgs');if(b2&&(scroll||atBottom))b2.scrollTop=b2.scrollHeight;
+  chatHydrate();
 }
 const chatGrow=t=>{t.style.height='auto';t.style.height=Math.min(140,t.scrollHeight)+'px'};
 async function chatSend(){
-  const t=document.getElementById('ch-text');const body=(t.value||'').trim();if(!body||!CH.room)return;
-  const ments=[...CH.ment.entries()].filter(([nm])=>body.includes('@'+nm)).map(([,e])=>e);
-  t.value='';chatGrow(t);CH.ment=new Map();
-  const r=await R.sb.rpc('chat_send',{p_room:CH.room,p_body:body,p_mentions:ments});
-  if(r.error){toast(dbErr(r.error));t.value=body;return}
+  const t=document.getElementById('ch-text');const body=(t.value||'').trim();if((!body&&!CH.pending.length)||!CH.room||CH.sending)return;CH.emoji=false;
+  let files=[];const ments=[...CH.ment.entries()].filter(([nm])=>body.includes('@'+nm)).map(([,e])=>e);
+  t.value='';chatGrow(t);CH.ment=new Map();const restore=()=>{const t3=document.getElementById('ch-text');if(t3){t3.value=body;chatGrow(t3)}};
+  if(CH.pending.length){CH.sending=true;chatRender();
+    for(const f of CH.pending){const safe=f.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^\w.\-]+/g,'_').slice(-80);
+      const path=`${CH.room}/${Date.now()}-${Math.random().toString(36).slice(2,7)}-${safe}`;
+      const up=await R.sb.storage.from('chat').upload(path,f.file,{contentType:f.mime||'application/octet-stream',upsert:false});
+      if(up.error){CH.sending=false;chatRender();restore();toast(`Không gửi được ${f.name}: ${up.error.message}`);return}
+      files.push({path,name:f.name,size:f.size,mime:f.mime})}
+    CH.pending.forEach(f=>URL.revokeObjectURL(f.url));CH.pending=[];CH.sending=false}
+  const r=await R.sb.rpc('chat_send',{p_room:CH.room,p_body:body,p_mentions:ments,p_files:files});
+  if(r.error){toast(dbErr(r.error));chatRender();restore();return}
   if(!CH.msgs[CH.room]||!CH.msgs[CH.room].some(x=>x.id===r.data)){await chatLoadMsgs(CH.room)}
   chatRender(true);
 }
@@ -1237,6 +1249,25 @@ function chatSuggest(t){
 }
 function chatPick(i){const t=document.getElementById('ch-text');const s=CH.sugg;if(!t||!s)return;const x=s.list[i];const ins='@'+x.n+' ';
   t.value=t.value.slice(0,s.start)+ins+t.value.slice(s.end);const c=s.start+ins.length;t.setSelectionRange(c,c);t.focus();CH.ment.set(x.n,x.e);CH.sugg=null;document.getElementById('ch-sugg').hidden=true}
+const EMOJI=['😀','😁','😂','🤣','😊','😍','🥰','😘','😉','😎','🤔','😅','😮','😢','😭','😡','😴','🤗','👍','👎','👏','🙏','💪','🙌','🤝','👌','✌️','👋','❤️','💚','🔥','🎉','✅','❌','⚠️','❓','⏰','📌','📎','📄','📁','📅','💼','🏦','💵','✈️','🏠','🇺🇸','🇻🇳','☕'];
+const BLOCK_EXT=/\.(exe|bat|cmd|sh|js|mjs|html?|svg|msi|apk|scr|ps1|vbs|jar)$/i;
+const chatSize=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function chatAddFiles(list){
+  for(const f of list){
+    if(CH.pending.length>=10){toast('Tối đa 10 tệp mỗi tin nhắn');break}
+    if(BLOCK_EXT.test(f.name)){toast(`Không gửi được loại tệp ${f.name.split('.').pop().toUpperCase()}`);continue}
+    if(f.size>25*1048576){toast(`${f.name} lớn hơn 25 MB`);continue}
+    const name=f.name&&f.name!=='image.png'?f.name:`anh-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${(f.type.split('/')[1]||'png').replace('jpeg','jpg')}`;
+    CH.pending.push({file:f,name,size:f.size,mime:f.type||'',url:URL.createObjectURL(f)})}
+  chatRender();const t=document.getElementById('ch-text');t&&t.focus();
+}
+function chatAttHTML(m){const a=Array.isArray(m.attachments)?m.attachments:[];if(!a.length)return'';
+  const imgs=a.filter(x=>String(x.mime).startsWith('image/')),oth=a.filter(x=>!String(x.mime).startsWith('image/'));
+  return (imgs.length?`<div class="cm-imgs n${Math.min(imgs.length,3)}">${imgs.map(x=>`<button type="button" class="cm-img" data-chopen="${esc(x.path)}" title="${esc(x.name)}"><img data-chimg="${esc(x.path)}" alt="${esc(x.name)}"></button>`).join('')}</div>`:'')+
+    oth.map(x=>`<button type="button" class="cm-file" data-chopen="${esc(x.path)}"><span class="cm-file-ic">${I('file',18)}</span><span><b>${esc(x.name)}</b><small>${chatSize(+x.size||0)} · bấm để mở</small></span></button>`).join('')}
+async function chatUrl(path){const c=CH.urls[path];if(c&&c.exp>Date.now()+60000)return c.url;const r=await R.sb.storage.from('chat').createSignedUrl(path,3600);if(r.error)throw new Error(r.error.message);CH.urls[path]={url:r.data.signedUrl,exp:Date.now()+3600e3};return r.data.signedUrl}
+function chatHydrate(){document.querySelectorAll('#chatpanel img[data-chimg]:not([src])').forEach(async im=>{try{im.src=await chatUrl(im.dataset.chimg);im.onload=()=>{const b=document.getElementById('ch-msgs');if(b&&b.scrollHeight-b.scrollTop-b.clientHeight<260)b.scrollTop=b.scrollHeight}}catch(_){im.alt='Không tải được ảnh'}})}
+function chatInsert(txt){const t=document.getElementById('ch-text');if(!t)return;const a=t.selectionStart??t.value.length,b=t.selectionEnd??a;t.value=t.value.slice(0,a)+txt+t.value.slice(b);const c=a+txt.length;t.focus();t.setSelectionRange(c,c);chatGrow(t)}
 document.addEventListener('click',async e=>{
   const g=s=>e.target.closest(s);
   if(g('#chatfab')){CH.open=!CH.open;if(CH.open&&!CH.room)chatLoadUnread();chatRender(true);return}
@@ -1254,6 +1285,12 @@ document.addEventListener('click',async e=>{
   if(g('[data-chedit]')){CH.edit=!CH.edit;chatRender();return}
   if(g('[data-chleave]')){const r=await R.sb.rpc('chat_leave_group',{p_room:CH.room});if(r.error){toast(dbErr(r.error));return}CH.room=null;await chatLoadRooms();chatRender();toast('Đã rời nhóm');return}
   if((b=g('[data-chment]'))){chatPick(+b.dataset.chment);return}
+  if(g('[data-chattach]')){const fi=document.getElementById('ch-file');fi&&fi.click();return}
+  if(g('[data-chemoji]')){CH.emoji=!CH.emoji;chatRender();return}
+  if((b=g('[data-chemo]'))){chatInsert(b.dataset.chemo);CH.emoji=false;chatRender();const t=document.getElementById('ch-text');if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length)}return}
+  if((b=g('[data-chunpend]'))){const f=CH.pending.splice(+b.dataset.chunpend,1)[0];if(f)URL.revokeObjectURL(f.url);chatRender();return}
+  if((b=g('[data-chopen]'))){const w=window.open('','_blank');try{const u=await chatUrl(b.dataset.chopen);if(w)w.location=u;else window.open(u,'_blank','noopener')}catch(err){if(w)w.close();toast('Không mở được tệp: '+err.message)}return}
+  if(CH.emoji&&!g('.ch-emo')){CH.emoji=false;chatRender()}
 });
 document.addEventListener('submit',async e=>{
   if(e.target.id==='chform'){e.preventDefault();chatSend();return}
@@ -1270,3 +1307,9 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Escape'&&CH.open&&!BELL.open){CH.open=false;chatRender()}
 });
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&CH.open&&CH.room&&CH.unread[CH.room]){delete CH.unread[CH.room];chatBadge();R.sb.rpc('chat_mark_read',{p_room:CH.room})}});
+
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='ch-file'){chatAddFiles([...e.target.files]);e.target.value=''}});
+document.addEventListener('paste',e=>{if(!(e.target&&e.target.id==='ch-text'))return;const fs=[...(e.clipboardData&&e.clipboardData.files||[])];if(fs.length){e.preventDefault();chatAddFiles(fs)}});
+document.addEventListener('dragover',e=>{const p=e.target.closest&&e.target.closest('#chatpanel');if(p&&CH.room){e.preventDefault();p.classList.add('drop')}});
+document.addEventListener('dragleave',e=>{const p=e.target.closest&&e.target.closest('#chatpanel');if(p&&!p.contains(e.relatedTarget))p.classList.remove('drop')});
+document.addEventListener('drop',e=>{const p=e.target.closest&&e.target.closest('#chatpanel');if(p&&CH.room){e.preventDefault();p.classList.remove('drop');chatAddFiles([...e.dataTransfer.files])}});
