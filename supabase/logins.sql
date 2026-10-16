@@ -3,7 +3,7 @@
 --   • kind = 'login' : vừa nhập email + mật khẩu
 --   • kind = 'open'  : mở lại portal khi vẫn còn phiên đăng nhập (tối đa 1 dòng / 30 phút / người)
 -- Chỉ Quản trị đọc được. Ghi qua hàm log_login (không ai ghi thẳng vào bảng).
--- Email cho Quản trị chỉ khi: lần đầu đăng nhập, thiết bị lạ, hoặc ngoài giờ (22:00–6:00).
+-- Email cho Quản trị chỉ khi: lần đầu đăng nhập (tài khoản mới), thiết bị lạ, hoặc ngoài giờ (22:00–6:00).
 -- Tự xoá dòng cũ hơn 180 ngày. Chạy lại nhiều lần vẫn an toàn.
 -- =============================================================================
 create table if not exists public.login_log (
@@ -56,7 +56,11 @@ declare
 begin
   if public.my_role() is null then return; end if;   -- chỉ ghi người có trong bảng Nhân viên
   if k = 'open' and exists (select 1 from public.login_log where email = who and at > now() - interval '30 minutes') then return; end if;
-  if not exists (select 1 from public.login_log where email = who) then why := why || 'lần đầu đăng nhập'::text;
+  if not exists (select 1 from public.login_log where email = who) then
+    -- tài khoản có từ trước khi bật nhật ký (16/10/2026): lần đầu chỉ ghi làm mốc, không email
+    if exists (select 1 from public.staff where lower(email) = who and created_at > timestamptz '2026-10-16 10:30:00+00') then
+      why := why || 'lần đầu đăng nhập'::text;
+    end if;
   elsif coalesce(dev,'') <> '' and not exists (select 1 from public.login_log where email = who and device = dev) then why := why || 'thiết bị lạ'::text; end if;
   if hr >= 22 or hr < 6 then why := why || 'ngoài giờ làm'::text; end if;
   insert into public.login_log(email, kind, device, ua) values (who, k, dev, left(p_ua, 300));
