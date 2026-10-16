@@ -120,7 +120,7 @@
     [/^(\d+) thiếu$/, '$1 missing'], [/^(\d+) đã nhận$/, '$1 received'], [/^(\d+) tài liệu đang chờ duyệt$/, '$1 pending review'], [/^(\d+) chờ duyệt$/, '$1 pending'], [/^(\d+) tài liệu$/, '$1 documents'],
     [/^(\d+)\/(\d+) đã duyệt$/, '$1/$2 approved'], [/^(\d+)\/(\d+) tài liệu bắt buộc$/, '$1/$2 required documents'],
     [/^(\d+) hồ sơ đang thu thập chứng từ$/, '$1 cases collecting documents'],
-    [/^Bước (\d+)$/, 'Step $1'], [/^(\d+)\/(\d+) mốc$/, '$1/$2 milestones'], [/^Hồ sơ tự chuyển sang Bước (\d+): (.+)$/, 'Case moved to step $1 automatically'], [/^Công ty tại (.+)$/, 'Company in $1'], [/^Bước$/, 'Step'], [/^Chuyển hồ sơ sang bước (\d+)$/, 'Move case to step $1'], [/^Chuyển sang bước (\d+)$/, 'Move to step $1'],
+    [/^Bước (\d+)$/, 'Step $1'], [/^(\d+) đang online$/, '$1 online'], [/^(\d+)\/(\d+) mốc$/, '$1/$2 milestones'], [/^Hồ sơ tự chuyển sang Bước (\d+): (.+)$/, 'Case moved to step $1 automatically'], [/^Công ty tại (.+)$/, 'Company in $1'], [/^Bước$/, 'Step'], [/^Chuyển hồ sơ sang bước (\d+)$/, 'Move case to step $1'], [/^Chuyển sang bước (\d+)$/, 'Move to step $1'],
     [/^Chi tiết (.+)$/, 'Details $1'], [/^Chuyên viên: (.+)$/, 'Case officer: $1'], [/^Hồ sơ ([A-Z0-9-]+)$/, 'Case $1'],
     [/^Tải tệp cho (.+)$/, 'Upload files for $1'], [/^Tải (.+)$/, 'Download $1'], [/^Xoá (.+)$/, 'Delete $1'],
     [/^Tệp đã nộp \((\d+)\)$/, 'Submitted files ($1)'], [/^Đợt (\d+)$/, 'Installment $1'], [/^Đã thu Đợt (\d+)$/, 'Received installment $1'],

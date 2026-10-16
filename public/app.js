@@ -348,10 +348,16 @@ const ONLINE={ch:null,state:{},last:''};
 function presenceStart(){
   if(ONLINE.ch||!R.sb||!R.email)return;
   ONLINE.ch=R.sb.channel('idc-online',{config:{presence:{key:R.email}}});
-  ONLINE.ch.on('presence',{event:'sync'},()=>{ONLINE.state=ONLINE.ch.presenceState?ONLINE.ch.presenceState():{};if(R.isAdmin&&S.view==='admin')renderOnline()})
+  ONLINE.ch.on('presence',{event:'sync'},()=>{ONLINE.state=ONLINE.ch.presenceState?ONLINE.ch.presenceState():{};renderOlPill();if(R.isAdmin&&S.view==='admin')renderOnline()})
     .subscribe(st=>{if(st==='SUBSCRIBED'){ONLINE.last='';presenceTrack()}});
 }
-function presenceStop(){if(ONLINE.ch){try{R.sb.removeChannel(ONLINE.ch)}catch(_){}ONLINE.ch=null;ONLINE.state={}}}
+function presenceStop(){if(ONLINE.ch){try{R.sb.removeChannel(ONLINE.ch)}catch(_){}ONLINE.ch=null;ONLINE.state={}}renderOlPill()}
+function renderOlPill(){const b=document.getElementById('olpill');if(!b)return;
+  if(!R.isAdmin||!R.email){b.hidden=true;return}
+  const l=onlineList(),others=l.filter(u=>u.email!==R.email);
+  b.hidden=false;const sp=document.getElementById('olpill-t');sp.textContent=`${l.length} đang online`;sp.dataset.n=l.length;
+  b.title=l.length?'Đang online: '+l.map(u=>(u.name||personName(u.email))+(u.email===R.email?' (bạn)':'')).join(', ')+' · Bấm để xem nhật ký đăng nhập':'Bấm để xem nhật ký đăng nhập';
+  b.classList.toggle('has',others.length>0)}
 function presenceTrack(){
   if(!ONLINE.ch||!ONLINE.ch.track)return;
   const view=S.view==='case'&&S.client?S.client:S.view;const key=view+'|'+(document.hidden?'away':'here');if(key===ONLINE.last)return;ONLINE.last=key;

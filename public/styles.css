@@ -573,3 +573,8 @@ html[lang="en"] .dept-en{display:none}
 .bp-dot.login{background:#22A04B}
 @media (max-width:900px){.lg-grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.ol-dot{animation:none}}
+.olpill{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;margin-right:8px;border-radius:999px;border:1px solid var(--border);background:var(--bg);font-size:12.5px;font-weight:600;color:#3B4A3B;white-space:nowrap}
+.olpill i{width:8px;height:8px;border-radius:50%;background:#9AA59A}
+.olpill.has i{background:#22A04B;box-shadow:0 0 0 3px rgba(34,160,75,.18)}
+.olpill:hover{border-color:#17631A}.olpill:focus-visible{outline:2px solid #17631A;outline-offset:2px}
+@media (max-width:640px){.olpill{padding:0 9px}.olpill span{font-size:0}.olpill span::after{content:attr(data-n)}}
